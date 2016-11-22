@@ -111,7 +111,7 @@ case 8:
         
 break;
 case 9:
- this.$ = node(T.OBJECT, $$[$0-1], _$[$0-1]) 
+ this.$ = node(T.OBJECT, $$[$0-1] || [], _$[$0-1]) 
 break;
 case 10: case 14:
  this.$ = [$$[$0-1]]   

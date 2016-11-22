@@ -39,7 +39,7 @@ QualifiedIdent
     ;
 
 Object
-    : '{' PropertyList? '}'     { $$ = node(T.OBJECT, $2, @2) }
+    : '{' PropertyList? '}'     { $$ = node(T.OBJECT, $2 || [], @2) }
     ;
 
 PropertyList
