@@ -1,0 +1,37 @@
+{
+    "author"      : "Yosbel Marin",
+    "name"        : "ramdascript",
+    "version"     : "0.1.0",
+    "license"     : "MIT",
+    "description" : "JavaScript in the Ramda way",
+    "repository"  : "https://github.com/yosbelms/ramdascript.git",
+
+    "main": "./src/ramdascript",
+
+    "preferGlobal": true,
+
+    "bin": {
+        "ram": "./bin/ram"
+    },
+
+    "scripts": {
+        "test"   : "node ./scripts/test.js",
+        "parser" : "node ./scripts/parser.js",
+        "all"    : "npm run parser && npm run test"
+    },
+
+    "devDependencies": {
+        "jison"   : "0.4.15",
+        "jasmine" : "2.3.2"
+    },
+
+    "keywords": [
+        "ramda",
+        "ramdascript",
+        "s-expression",
+        "clojure",
+        "lisp",
+        "language",
+        "javascript"
+    ]
+}
