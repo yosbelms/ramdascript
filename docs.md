@@ -1,7 +1,7 @@
 
 # RamdaScript
 
-RamdaScript is a little functional language that lets you write JavaScript in the [Ramda](http://ramdajs.com) way. There are already several functional languages that targets JavaScript. Commonly they are full-featured with rigid philosophy, own architecture and standard libraries. RamdaScript is lean, focused on simplicity by combining the power of [Ramda](http://ramdajs.com) with the elegance of S-Expressions.
+RamdaScript is a little functional S-Expression based language that compiles to clean JavaScript + [Ramda](http://ramdajs.com). There are already several functional languages that targets JavaScript. Commonly they are full-featured with rigid philosophy, own architecture and standard libraries. RamdaScript is lean, focused on simplicity by combining the power of [Ramda](http://ramdajs.com) with the elegance of S-Expressions.
 
 RamdaScript compiles to readable and pretty-printed JavaScript. You can use any JavaScript library in RamdaScript and vice-versa.
 
@@ -24,7 +24,6 @@ RamdaScript compiles to readable and pretty-printed JavaScript. You can use any 
 The following RamdaScript code:
 
 ```
-// list of todo
 (def todos [
     {
         : title 'Buy meals'
@@ -35,18 +34,14 @@ The following RamdaScript code:
         : completed false
     }])
 
-// find completed todos
 (def findCompleted
     (filter
         (propEq 'completed' true)))
 
-
-// find
 (console.log (findCompleted todos))
-
 ```
 
-Will generate nice and clean JavaScript code:
+Will generate the clean JavaScript code:
 
 ```
 var todos = [
@@ -205,7 +200,7 @@ S-Expression
 (a b c)
 ```
 
-Special placeholder, detailed description [here](http://ramdajs.com/docs/index.html#__)
+Special placeholder(`_`), detailed description [here](http://ramdajs.com/docs/index.html#__)
 
 ```
 ((subtract _ 8) 10)
@@ -226,7 +221,7 @@ a comment
 */
 ```
 
-Optional commas, can be used to separate S-Expression and Array items, and Object properties.
+Optional commas, can be used to separate elements inside S-Expression, Array items, and Object properties.
 
 ```
 (a, b, c)
@@ -275,12 +270,12 @@ The first parameter is a list of arguments, followed by one or more expressions.
 
 #### Alter
 
-Modifies and returns the value of a variable. This function is curried.
+Modifies and returns the value of a variable. This function can be partially applied.
 
 ```
 (alter app.state newState)
 
-// curried
+// partial application
 ((alter app.state) newState)
 ```
 
@@ -290,12 +285,14 @@ Modifies and returns the value of a variable. This function is curried.
 Imports external modules
 
 ```
-(import 'react' R)
+(import 'react' React)
 ```
 
 ```
 (import 'sanctuary' [Maybe, Just, Nothing])
 ```
+
+Import uses CommonJS underlaying.
 
 #### More functions
 
