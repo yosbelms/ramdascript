@@ -2,7 +2,7 @@
 
 ![badge](https://circleci.com/gh/yosbelms/ramdascript/tree/master.png?circle-token=154390b3f400d0abac1e1457dc7652411debbd4d)
 
-RamdaScript is a little functional language that allows you to write JavaScript in the [Ramda](ramdajs.com) way.
+RamdaScript is a little functional S-Expression based language that compiles to clean JavaScript + [Ramda](http://ramdajs.com).
 
 ## Installation
 
@@ -27,6 +27,8 @@ ram repl
 ```
 
 For documentation https://github.com/yosbelms/ramdascript/blob/master/docs.md
+
+See examples https://github.com/yosbelms/ramdascript/tree/master/examples
 
 To file an issue  https://github.com/yosbelms/ramdascript/issues
 
