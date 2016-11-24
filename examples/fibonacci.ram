@@ -1,0 +1,14 @@
+
+// recursively calculate fibonacci
+
+(def fib (fn [n]
+    (call (ifElse
+        (lte _ 1)
+        (always 1)
+        (converge add
+            [(compose fib (subtract _ 1))
+             (compose fib (subtract _ 2))]))
+        n)))
+
+
+(console.log (times fib 20))

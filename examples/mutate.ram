@@ -1,0 +1,16 @@
+
+// define
+(def state 0)
+(console.log state, 'zero')
+
+// mutate
+(alter state 5)
+(console.log state 'five')
+
+// partially apply `alter`
+// and reuse later
+(def updateState (alter state))
+
+// mutate
+(updateState 20)
+(console.log state 'twenty')
