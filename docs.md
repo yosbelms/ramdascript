@@ -253,7 +253,7 @@ Declares a variable and assigns a value to it.
 
 #### Fn
 
-Returns a lamda function.
+Returns a lamda function. All functions defined with RamdaScript are curried.
 
 ```
 (fn [args...] exprs...)
