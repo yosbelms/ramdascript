@@ -1,9 +1,7 @@
 
 # RamdaScript
 
-RamdaScript is a little functional S-Expression based language that compiles to clean JavaScript + [Ramda](http://ramdajs.com). There are already several functional languages that targets JavaScript. Commonly they are full-featured with rigid philosophy, own architecture and standard libraries. RamdaScript is lean, focused on simplicity by combining the power of [Ramda](http://ramdajs.com) with the elegance of S-Expressions.
-
-RamdaScript compiles to readable and pretty-printed JavaScript. You can use any JavaScript library in RamdaScript and vice-versa.
+RamdaScript is a language that compiles to JavaScript. It is a syntactic sugar to make elegant what is already streightforward, the Ramda API.
 
 * [Overview](#overview)
 * [Installation](#installation)
@@ -21,17 +19,19 @@ RamdaScript compiles to readable and pretty-printed JavaScript. You can use any 
 
 ## Overview
 
-The following RamdaScript code:
+RamdaScript was created after trying to write apps logic using only Ramda. I quickly realized that the Lisp syntax fits better than JavaScript when writing large codebase using a declarative approach. Furthemore, it is always tempting to fall in writing imperative snippets, and finally end up with a mixing of different paradigms.
+
+RamdaScript compiles to readable and pretty-printed JavaScript. The following RamdaScript code:
 
 ```
 (def todos [
     {
-        : title 'Buy meals'
-        : completed true
+        : title 'See todo list'
+        : completed false
     }
     {
-        : title 'Write docs'
-        : completed false
+        : title 'Procrastinate'
+        : completed true
     }])
 
 (def findCompleted
@@ -41,17 +41,17 @@ The following RamdaScript code:
 (console.log (findCompleted todos))
 ```
 
-Will generate the clean JavaScript code:
+Compiles to:
 
 ```
 var todos = [
     {
-        title : 'Buy meals',
-        completed : true
+        title : 'See todo list',
+        completed : false
     },
     {
-        title : 'Write docs',
-        completed : false
+        title : 'Procrastinate',
+        completed : true
     }
 ]
 
@@ -132,6 +132,8 @@ Run a short RamdaScript snippet
 ram eval -src "(console.log (map (add 1) [1 2 3]))"
 ```
 
+> Compiled RamdaScript code directly depends on Ramda, so, Ramda installation is a requirement to roun generated code.
+
 ## Language Reference
 
 RamdaScript uses a S-Expression based syntax made popular by the Lisp family. In RamdaScript elements are separated by spaces, although commas (`,`) are optional. It has few builtin functions apart from the rich set that [Ramda API](http://ramdajs.com/docs/) provides, these are:
@@ -146,7 +148,7 @@ Ramda functions are very well documented [here](http://ramdajs.com/docs/)
 
 ### Literals and Comments
 
-RamdaScript shares `Boolean` and `Number` syntaxes with JavaScript, `Strings` are delimited by single quotes (`'`) and can be multilined, the `nil` keyword is the equivalen to JavaScript `null`. The underscore (`_`) symbol replaces Ramda special placeholder.
+RamdaScript shares `Boolean` and `Number` syntaxes with JavaScript, `Strings` are delimited by single quotes (`'`) and can be multilined, the `nil` keyword is the equivalen to JavaScript `null`. The underscore (`_`) symbol is the equivalent to the Ramda special placeholder.
 
 String
 
