@@ -2,7 +2,11 @@
 
 ![badge](https://circleci.com/gh/yosbelms/ramdascript/tree/master.png?circle-token=154390b3f400d0abac1e1457dc7652411debbd4d)
 
-RamdaScript is a little functional S-Expression based language that compiles to clean JavaScript + [Ramda](http://ramdajs.com).
+RamdaScript is a functional language that compiles to JavaScript. It as few main features:
+
+* Lisp based syntax.
+* [Ramda](http://ramdajs.com) is the standard library.
+* Clean JavaScript output.
 
 ## Installation
 
