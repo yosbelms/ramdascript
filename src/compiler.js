@@ -1,8 +1,9 @@
 
-var nodes   = require('./nodes')
-var util    = require('./util')
-var T       = nodes.type
-var newNode = nodes.node
+var nodes    = require('./nodes')
+var util     = require('./util')
+var T        = nodes.type
+var newNode  = nodes.node
+var curryFns = ['curry1', 'curry2', 'curry3']
 
 // walk through nodes
 function walk(node, parent, ctx) {
@@ -138,13 +139,28 @@ function visitSexpr(node, parent, ctx) {
                 }
             return
             case 'fn' :
-                var body, args = data[0]
+                var name
+                var body
+                var args = data[0].content
 
-                ctx.write('function (')
+                switch (args.length) {
+                    case 0 :
+                        ctx.write('function (')
+                    break
+                    case 1 :
+                    case 2 :
+                    case 3 :
+                        name = 'curry' + args.length
+                        ctx.addUsedRamdaFn(name)
+                        ctx.write('R.' + name + '(function (')
+                    break
+                    default :
+                        ctx.write('R.curry(function (')
+                }
 
                 // write arguments
-                if (args.content && args.content.length > 0) {
-                    args.content.forEach(function(arg, idx, arr) {
+                if (args && args.length > 0) {
+                    args.forEach(function(arg, idx, arr) {
                         walk(arg, node, ctx)
                         if (idx < arr.length - 1) {
                             ctx.write(', ')
@@ -329,23 +345,28 @@ function isIndentableNode(node) {
 
 // write CommonJS wrapper
 function writeCommonJSWrapper(ctx) {
+    /*
     if (Object.keys(ctx.usedRamdaFns).length > 0) {
         ctx.writeTop('var R = require(\'ramda\')\n\n')
     }
+    */
 
     /*
     Granular require for each function, for minimal bundle size
-    TODO: Consult Ramda authors
+    */
+    var usedFns = []
+    var requireStr
 
-    var rfns = []
     Object.keys(ctx.usedRamdaFns).forEach(function(key) {
-        rfns.push(ctx.indentUnit + key + ': require(\'ramda/src/' + key + '\')')
+        requireStr = curryFns.indexOf(key) > -1
+            ? ctx.indentUnit + key + ': require(\'ramda/src/internal/_' + key + '\')'
+            : ctx.indentUnit + key + ': require(\'ramda/src/' + key + '\')'
+        usedFns.push(requireStr)
     })
 
-    if (rfns.length > 0) {
-        ctx.writeTop('var R = {\n' + rfns.join(',\n') + '\n}\n\n')
+    if (usedFns.length > 0) {
+        ctx.writeTop('var R = {\n' + usedFns.join(',\n') + '\n}\n\n')
     }
-    */
 
     ctx.newLine()
     ctx.newLine()
