@@ -5,6 +5,7 @@
 RamdaScript is a functional language that compiles to JavaScript. It as few main features:
 
 * Lisp based syntax.
+* Autocurried functions.
 * [Ramda](http://ramdajs.com) is the standard library.
 * Clean JavaScript output.
 
