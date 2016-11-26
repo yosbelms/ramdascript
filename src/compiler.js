@@ -3,7 +3,6 @@ var nodes    = require('./nodes')
 var util     = require('./util')
 var T        = nodes.type
 var newNode  = nodes.node
-var curryFns = ['curry1', 'curry2', 'curry3']
 
 // walk through nodes
 function walk(node, parent, ctx) {
@@ -139,23 +138,15 @@ function visitSexpr(node, parent, ctx) {
                 }
             return
             case 'fn' :
-                var name
                 var body
                 var args = data[0].content
 
-                switch (args.length) {
-                    case 0 :
-                        ctx.write('function (')
-                    break
-                    case 1 :
-                    case 2 :
-                    case 3 :
-                        name = 'curry' + args.length
-                        ctx.addUsedRamdaFn(name)
-                        ctx.write('R.' + name + '(function (')
-                    break
-                    default :
-                        ctx.write('R.curry(function (')
+                // curry function if args number is greater than 0
+                if (args.length === 0) {
+                    ctx.write('function (')
+                } else {
+                    ctx.addUsedRamdaFn('curry')
+                    ctx.write('R.curry(function (')
                 }
 
                 // write arguments
@@ -190,6 +181,11 @@ function visitSexpr(node, parent, ctx) {
                 ctx.dedent()
                 ctx.newLine()
                 ctx.write('}')
+
+                // ending curry wrapper
+                if (args.length > 0) {
+                    ctx.write(')')
+                }
             return
             case 'alter' :
                 var recver = data[0]
@@ -355,13 +351,9 @@ function writeCommonJSWrapper(ctx) {
     Granular require for each function, for minimal bundle size
     */
     var usedFns = []
-    var requireStr
 
     Object.keys(ctx.usedRamdaFns).forEach(function(key) {
-        requireStr = curryFns.indexOf(key) > -1
-            ? ctx.indentUnit + key + ': require(\'ramda/src/internal/_' + key + '\')'
-            : ctx.indentUnit + key + ': require(\'ramda/src/' + key + '\')'
-        usedFns.push(requireStr)
+        usedFns.push(ctx.indentUnit + key + ': require(\'ramda/src/' + key + '\')')
     })
 
     if (usedFns.length > 0) {
