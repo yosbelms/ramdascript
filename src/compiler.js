@@ -372,7 +372,7 @@ function writeCommonJSWrapper(ctx) {
 
 // write Closure wrapper
 function writeClosureWrapper(ctx) {
-    ctx.writeTop('(function () {\n\n')
+    ctx.writeTop(';(function () {\n\n')
     ctx.newLine()
     ctx.newLine()
     ctx.write('})()')

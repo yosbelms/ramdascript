@@ -178,6 +178,7 @@ function compileFile(srcPath, dstPath, wrapper, toStdout) {
 }
 
 // makes a directory path in the filesysytem
+
 function makePath(dirPath) {
     dirPath = path.dirname(dirPath).split(path.sep)
     dirPath.reduce(function(dirPath, p){
