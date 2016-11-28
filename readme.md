@@ -2,11 +2,11 @@
 
 ![badge](https://circleci.com/gh/yosbelms/ramdascript/tree/master.png?circle-token=154390b3f400d0abac1e1457dc7652411debbd4d)
 
-RamdaScript is a functional language that compiles to JavaScript. It as few main features:
+RamdaScript is a functional language that compiles to JavaScript. It has few main features:
 
 * Lisp based syntax.
 * Autocurried functions.
-* [Ramda](http://ramdajs.com) is the standard library.
+* [Ramda](http://ramdajs.com) as the standard library.
 * Clean JavaScript output.
 
 ## Installation
