@@ -70,7 +70,7 @@ function walk(node, parent, ctx) {
                     }
                     // can not defined using qualified idents
                     if (isQualifiedIdent(data[0])) {
-                        ctx.error('unezpected qualified ident `' + varName + '`', lineno)
+                        ctx.error('unespected qualified ident `' + varName + '`', lineno)
                     }
                 break
                 case 'import' :
