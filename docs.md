@@ -85,6 +85,11 @@ Usage: ram [command] [args]
 
 If called without any command will print this help
 
+run [-src]
+
+Compile .ram file containig RamdaScript code
+  -src    Route to source file with RamdaScript code
+
 compile [-src] [-dst] [-nowrap]
 
 Compile to JavaScript and save as .js file
@@ -124,6 +129,12 @@ Recursively compile `.ram` files contained inside a directory
 
 ```shell
 ram compile -src path/to/dir -dst path/to/destiny
+```
+
+Run a `.ram` file
+
+```shell
+ram run -src path/to/script.ram
 ```
 
 Run a short RamdaScript snippet
@@ -169,6 +180,12 @@ Number
 .5
 0.3
 1e9
+```
+
+Regular Expression
+
+```
+/abc[xy]*(capture)?/g
 ```
 
 Boolean
