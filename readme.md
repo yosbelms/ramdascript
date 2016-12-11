@@ -4,9 +4,10 @@
 
 RamdaScript is a functional language that compiles to JavaScript. It has few main features:
 
-* Lisp based syntax.
+* A Lisp dialect.
 * Autocurried functions.
 * [Ramda](http://ramdajs.com) as the standard library.
+* Straightforward interoperability with JavaScript.
 * Clean JavaScript output.
 
 ## Installation
@@ -18,6 +19,12 @@ npm install -g ramdascript
 ```
 
 ## Getting started
+
+Run a script
+
+```shell
+ram run -src path/to/script.ram
+```
 
 Compile a script
 
