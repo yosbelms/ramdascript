@@ -2,6 +2,7 @@
 var R       = require('../vendor/ramda')
 var fs      = require('fs')
 var path    = require('path')
+var Module  = require('module')
 var argv    = process.argv.slice(2)
 var ram     = require('./ramdascript')
 var repl    = require('./repl')
@@ -15,6 +16,11 @@ var help    = ['',
 'Usage: ram [command] [args]',
 '',
 'If called without any command will print this help',
+'',
+'run [-src]',
+'',
+'Compile .ram file containig RamdaScript code',
+'  -src    Route to source file with RamdaScript code',
 '',
 'compile [-src] [-dst] [-nowrap]',
 '',
@@ -45,6 +51,9 @@ switch (command) {
     case 'compile' :
         compile(opts)
     break
+    case 'run' :
+        run(opts)
+    break
     case 'repl' :
         repl.launch({R: R})
     break
@@ -69,6 +78,25 @@ function parseOpts(argv) {
         opts[lastOpt] = arg
     })
     return opts
+}
+
+function run(opts) {
+    // register `.ram` extension in nodejs modules
+    Module._extensions[util.ext] = function(module, filename) {
+        var content = fs.readFileSync(filename, 'utf8')
+        var js = ram.compile(content, {
+            filename: filename,
+            // just use commonjs export `R` will be imported from global
+            wrapper : 'commonjs-export',
+        })
+        module._compile(js, filename)
+    }
+
+    var src = opts['src']
+    var absolute = path.resolve(process.cwd(), src)
+    // globalize Ramda module to be used by loaded modules
+    global.R = R
+    require(absolute)
 }
 
 // executes eval command

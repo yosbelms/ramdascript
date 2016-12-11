@@ -133,8 +133,7 @@ function visitSexpr(node, parent, ctx) {
                 if (value) {
                     walk(value, node, ctx)
                 } else {
-                    ctx.write('void 0 ')
-                    ctx.newLine()
+                    ctx.write('void 0')
                 }
             return
             case 'fn' :
