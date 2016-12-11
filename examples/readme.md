@@ -1,9 +1,9 @@
 # Running Examples
 
-Install RamdaScript globally `node install -g ramdascript`. Once installed, you can run examples using `ram eval`.
+Install RamdaScript globally `node install -g ramdascript`. Once installed, you can run examples using `ram run`.
 
 Example
 
 ```shell
-cat ./fibonacci.ram | ram eval -src stdin
+ram run -src hello.ram
 ```
