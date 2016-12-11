@@ -340,7 +340,7 @@ function isIndentableNode(node) {
 }
 
 // write CommonJS wrapper
-function writeCommonJSWrapper(ctx) {
+function writeCommonJSWrapper(requireRamda, ctx) {
     /*
     if (Object.keys(ctx.usedRamdaFns).length > 0) {
         ctx.writeTop('var R = require(\'ramda\')\n\n')
@@ -348,20 +348,23 @@ function writeCommonJSWrapper(ctx) {
     */
 
     /*
-    Granular require for each function, for minimal bundle size
+    Granular require for each Ramda function, for minimal bundle size
     */
-    var usedFns = []
+    if (requireRamda) {
+        var usedFns = []
 
-    Object.keys(ctx.usedRamdaFns).forEach(function(key) {
-        usedFns.push(ctx.indentUnit + key + ': require(\'ramda/src/' + key + '\')')
-    })
+        Object.keys(ctx.usedRamdaFns).forEach(function(key) {
+            usedFns.push(ctx.indentUnit + key + ': require(\'ramda/src/' + key + '\')')
+        })
 
-    if (usedFns.length > 0) {
-        ctx.writeTop('var R = {\n' + usedFns.join(',\n') + '\n}\n\n')
+        if (usedFns.length > 0) {
+            ctx.writeTop('var R = {\n' + usedFns.join(',\n') + '\n}\n\n')
+        }
     }
 
     ctx.newLine()
     ctx.newLine()
+
     Object.keys(ctx.definedVars).forEach(function(name, idx, arr){
         ctx.write('exports.' + name + ' = ' + name)
         if (idx < arr.length - 1) {
@@ -396,7 +399,10 @@ exports.compileAst = function compileAst(ast, ctx, wrapper) {
 
     switch (wrapper) {
         case 'commonjs' :
-            writeCommonJSWrapper(ctx)
+            writeCommonJSWrapper(true, ctx)
+        break
+        case 'commonjs-export' :
+            writeCommonJSWrapper(false, ctx)
         break
         case 'closure' :
             writeClosureWrapper(ctx)
