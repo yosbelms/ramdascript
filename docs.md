@@ -83,11 +83,12 @@ Once installed, you should have access to the `ram` command, which can compile `
 ```
 Usage: ram [command] [args]
 
+If "command" is a .ram file will run that file
 If called without any command will print this help
 
 run [-src]
 
-Compile .ram file containig RamdaScript code
+Run .ram file containig RamdaScript code
   -src    Route to source file with RamdaScript code
 
 compile [-src] [-dst] [-nowrap]
@@ -135,6 +136,12 @@ Run a `.ram` file
 
 ```shell
 ram run -src path/to/script.ram
+```
+
+Alternatively
+
+```shell
+ram path/to/script.ram
 ```
 
 Run a short RamdaScript snippet

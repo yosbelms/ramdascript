@@ -9,17 +9,16 @@ var repl    = require('./repl')
 var util    = require('./util')
 var rOption = /^-(\S+)/
 var command = argv.shift()
-var opts    = parseOpts(argv)
-var file    = ''
 
 var help    = ['',
 'Usage: ram [command] [args]',
 '',
+'If "command" is a .ram file will run that file',
 'If called without any command will print this help',
 '',
 'run [-src]',
 '',
-'Compile .ram file containig RamdaScript code',
+'Run .ram file containig RamdaScript code',
 '  -src    Route to source file with RamdaScript code',
 '',
 'compile [-src] [-dst] [-nowrap]',
@@ -29,7 +28,7 @@ var help    = ['',
 '          the default value is the current directory (cwd)',
 '  -dst    Route where the resulting JavaScript code will be saved',
 '          if route is "stdout" the resulting code will be sent to stdout',
-'  -wrap   Specify module wrapper, possible values are: commonjs, closure, none;',
+'  -wrap   Specify module wrapper, possible values are: commonjs, closure, none.',
 '          commonjs is the default',
 '',
 'eval [-src]',
@@ -47,22 +46,31 @@ var help    = ['',
 'Print this help',
 ]
 
-switch (command) {
-    case 'compile' :
-        compile(opts)
-    break
-    case 'run' :
-        run(opts)
-    break
-    case 'repl' :
-        repl.launch({R: R})
-    break
-    case 'eval' :
-        _eval(opts)
-    break
-    case 'help' :
-    default :
-        console.log(help.join('\n'))
+dispatch(command, parseOpts(argv))
+
+function dispatch(command, opts) {
+    switch (command) {
+        case 'compile' :
+            compile(opts)
+        break
+        case 'run' :
+            run(opts)
+        break
+        case 'repl' :
+            repl.launch({R: R})
+        break
+        case 'eval' :
+            _eval(opts)
+        break
+        case 'help' :
+        default :
+            if (command && path.extname(command) === util.ext) {
+                opts['src'] = command
+                dispatch('run', opts)
+            } else {
+                console.log(help.join('\n'))
+            }
+    }
 }
 
 // extract cli options

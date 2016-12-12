@@ -23,7 +23,7 @@ npm install -g ramdascript
 Run a script
 
 ```shell
-ram run -src path/to/script.ram
+ram path/to/script.ram
 ```
 
 Compile a script
