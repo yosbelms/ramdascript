@@ -1,7 +1,7 @@
 
 # RamdaScript
 
-RamdaScript is a language that compiles to JavaScript. It is a syntactic sugar to make elegant what is already streightforward, the Ramda API.
+RamdaScript is a language that compiles to JavaScript. It is a syntactic sugar to make elegant what is already straightforward, the Ramda API.
 
 * [Overview](#overview)
 * [Installation](#installation)
