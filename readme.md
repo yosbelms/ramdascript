@@ -44,4 +44,4 @@ See examples https://github.com/yosbelms/ramdascript/tree/master/examples
 
 To file an issue  https://github.com/yosbelms/ramdascript/issues
 
-(c) 2016-present Yosbel Marin
+MIT (c) 2016-present Yosbel Marin
