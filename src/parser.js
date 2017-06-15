@@ -71,7 +71,7 @@
     recoverable: (boolean: TRUE when the parser has a error recovery rule available for this particular error)
   }
 */
-var CorParser = (function(){
+var RamdaScriptParser = (function(){
 var o=function(k,v,o,l){for(o=o||{},l=k.length;l--;o[k[l]]=v);return o},$V0=[5,9,10],$V1=[1,8],$V2=[1,7],$V3=[1,23],$V4=[1,22],$V5=[1,24],$V6=[1,13],$V7=[1,12],$V8=[1,14],$V9=[1,15],$Va=[1,16],$Vb=[1,17],$Vc=[5,9,10,12,14,16,18,21,23,27,29,30,31,32,33,34,35],$Vd=[9,10,12,14,16,18,21,29,30,31,32,33,34],$Ve=[2,28],$Vf=[1,28],$Vg=[9,10,12,14,16,18,21,23,27,29,30,31,32,33,34,35],$Vh=[9,10,12,14,16,18,19,21,23,27,29,30,31,32,33,34,35],$Vi=[1,35],$Vj=[23,27],$Vk=[23,27,35];
 var parser = {trace: function trace() { },
 yy: {},
@@ -702,9 +702,9 @@ return new Parser;
 
 
 if (typeof require !== 'undefined' && typeof exports !== 'undefined') {
-exports.parser = CorParser;
-exports.Parser = CorParser.Parser;
-exports.parse = function () { return CorParser.parse.apply(CorParser, arguments); };
+exports.parser = RamdaScriptParser;
+exports.Parser = RamdaScriptParser.Parser;
+exports.parse = function () { return RamdaScriptParser.parse.apply(RamdaScriptParser, arguments); };
 exports.main = function commonjsMain(args) {
     if (!args[1]) {
         console.log('Usage: '+args[0]+' FILE');

@@ -1,6 +1,6 @@
 var opts = {
     type       : 'lalr',
-    moduleName : 'CorParser',
+    moduleName : 'RamdaScriptParser',
     moduleType : 'commonjs',
 }
 

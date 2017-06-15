@@ -76,6 +76,21 @@ If you need RamdaScript as a dependency, install it locally:
 npm install --save ramdascript
 ```
 
+If you want to run RamdaScript code in the browser for rapid prototyping, include it in a web page using the `script` tag. The generated JavaScript depends on Ramda.
+
+```html
+<script type="text/javascript" src="node_modules/ramda/dist/ramda.js"></script>
+<script type="text/javascript" src="node_modules/ramdascript/browser.js"></script>
+```
+
+Once the document has been loaded RamdaScript will run the source code contained in the `script` elements with `type='text/ramdascript'`. Example:
+
+```
+<script type="text/ramdascript">
+    (console.log 'Hello Functional')
+</script>
+```
+
 ## Usage
 
 Once installed, you should have access to the `ram` command, which can compile `.ram` files to `.js`, and provide an interactive REPL. The `ram` CLI takes the following subcommands:
@@ -150,7 +165,7 @@ Run a short RamdaScript snippet
 ram eval -src "(console.log (map (add 1) [1 2 3]))"
 ```
 
-> Compiled RamdaScript code directly depends on Ramda, so, Ramda installation is a requirement to roun generated code.
+> Compiled RamdaScript code directly depends on Ramda, so, Ramda installation is a requirement to run generated code.
 
 ## Language Reference
 
@@ -176,7 +191,7 @@ String
 
 Multilined String
 ```
-'Hellow
+'Hello
 World'
 ```
 
@@ -318,7 +333,7 @@ Imports external modules
 (import 'sanctuary' [Maybe, Just, Nothing])
 ```
 
-Import uses CommonJS underlaying.
+The import function translates to CommonJS.
 
 #### More functions
 

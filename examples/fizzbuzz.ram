@@ -1,0 +1,38 @@
+(def isFizzBuzz (fn [a]
+    (call (pipe
+        (modulo _ 15)
+        (ifElse
+            (equals 0)
+            (fn [] (console.log 'FizzBuzz'))
+            (fn [] (isBuzz a))))
+        a)))
+
+
+(def isBuzz (fn [a]
+    (call (pipe
+        (modulo _ 5)
+        (ifElse
+            (equals 0)
+            (fn [] (console.log 'Buzz'))
+            (fn [] (isFizz a))))
+        a)))
+
+(def isFizz (fn [a]
+    (call (pipe
+        (modulo _ 3)
+        (ifElse
+            (equals 0)
+            (fn [] (console.log 'Fizz'))
+            (fn [] (console.log a))))
+        a)))
+
+(def fizzBuzz (fn [a b]
+    (call (ifElse
+        (fn [] (lt a (inc b)))
+        (fn []
+            (isFizzBuzz a)
+            (fizzBuzz (inc a) b))
+        (fn [] (console.log 'end'))))))
+
+// run
+(fizzBuzz 1 25)

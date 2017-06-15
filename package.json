@@ -17,7 +17,8 @@
     "scripts": {
         "test"   : "node ./scripts/test.js",
         "parser" : "node ./scripts/parser.js",
-        "all"    : "npm run parser && npm run test"
+        "browserify" : "node ./scripts/browserify.js > ./browser.js",
+        "all" : "npm run parser && npm run browserify && npm run test"
     },
 
     "devDependencies": {

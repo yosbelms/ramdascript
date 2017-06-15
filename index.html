@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>RamdaScript</title>
+
+        <style type="text/css">
+            body {
+                font-family: monospace;
+                margin: 0px;
+                background-color: #FFFDE7;
+            }
+
+            .container {
+                margin: 0px 20px;
+            }
+
+            #source,
+            #output {
+                width: 48%;
+                height: 300px;
+                display: inline;
+                background-color: white;
+                overflow: auto;
+            }
+
+            .header {
+                padding: 3px;
+                background-color: #FDD835;
+                margin-bottom: 10px;
+                border-bottom: 2px solid black;
+            }
+
+            .header > .container > * {
+                vertical-align: middle;
+            }
+
+            .toolbar {
+                margin-bottom: 3px;
+            }
+
+            h1 {
+                display: inline;
+            }
+
+            @media screen and (max-width:560px) {
+                #source,
+                #output {
+                    display: block;
+                    width: 100%;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <div class="container">
+                <img src="cover-small.png">
+                <h1>RamdaScript</h1>
+                <a href="https://github.com/yosbelms/ramdascript">GitHub</a> |
+                <a href="https://github.com/yosbelms/ramdascript/blob/master/docs.md">Docs</a>
+            </div>
+        </div>
+
+        <div class="container">The Lisp that compiles to <a href="http://ramdajs.com">Ramda.js</a></div>
+        </br>
+
+        <div class="container editor">
+            <div class="toolbar">
+                <select id="snippets">
+                    <option name="hello">Hello World</option>
+                    <option name="fibonacci">Fibonacci</option>
+                    <option name="fizzbuzz">FizzBuzz</option>
+                    <option name="objects">Objects</option>
+                    <option name="interop">JS Interop</option>
+                </select>
+                <a id="runbtn" href="javascript:void(0)">Run</a>
+            </div>
+
+            <textarea id="source"></textarea>
+            <textarea id="output" disabled></textarea>
+        </div>
+
+<script type="text/javascript" src="./vendor/ramda.js"></script>
+<script type="text/javascript" src="./browser.js"></script>
+<script type="text/ramdascript">
+
+    (def log console.log)
+    (def source (document.getElementById 'source'))
+    (def output (document.getElementById 'output'))
+    (def snippets (document.getElementById 'snippets'))
+    (def runbtn (document.getElementById 'runbtn'))
+
+    // Overide console.log
+    (alter console.log (fn []
+        (log.apply console arguments)
+        (alter output.value
+            (join '\n'
+                (concat [output.value] (Array.from arguments))))))
+
+    // Run
+    (alter runbtn.onclick (fn []
+        (alter output.value '')
+        (RamdaScript.run source.value)))
+
+    // Output JS code
+    (alter outputJs (fn []
+        (alter output.value (RamdaScript.compile source.value))))
+
+    // Select snippet
+    (def setSource (fn [src]
+            (alter source.value src)))
+
+    (def getSelectedOption (fn []
+            (nth snippets.selectedIndex snippets.options)))
+
+    (def getSelectedOptionName (fn []
+         ((invoker 1 'getAttribute') 'name' (getSelectedOption))))
+
+    (alter snippets.onchange (fn []
+        (alter output.value '')
+
+        (call
+            (pipe
+                (bind document.getElementById document)
+                (prop 'innerHTML')
+                setSource)
+        (getSelectedOptionName))
+
+        (outputJs)))
+
+    (alter source.onkeyup outputJs)
+
+    // Update source
+    (snippets.onchange)
+
+</script>
+
+
+<script id="none" type="text/snippet"></script>
+
+<script id="hello" type="text/snippet">
+(console.log 'Hello World!!')
+</script>
+
+<script id="fibonacci" type="text/snippet">
+(def fib (fn [n]
+    (call (ifElse
+        (lte _ 1)
+        (always 1)
+        (converge add
+            [(compose fib (subtract _ 1))
+             (compose fib (subtract _ 2))]))
+        n)))
+
+
+(console.log (times fib 10))
+</script>
+
+<script id="fizzbuzz" type="text/snippet">
+(def isFizzBuzz (fn [a]
+    (call (pipe
+        (modulo _ 15)
+        (ifElse
+            (equals 0)
+            (fn [] (console.log 'FizzBuzz'))
+            (fn [] (isBuzz a))))
+        a)))
+
+
+(def isBuzz (fn [a]
+    (call (pipe
+        (modulo _ 5)
+        (ifElse
+            (equals 0)
+            (fn [] (console.log 'Buzz'))
+            (fn [] (isFizz a))))
+        a)))
+
+(def isFizz (fn [a]
+    (call (pipe
+        (modulo _ 3)
+        (ifElse
+            (equals 0)
+            (fn [] (console.log 'Fizz'))
+            (fn [] (console.log a))))
+        a)))
+
+(def fizzBuzz (fn [a b]
+    (call (ifElse
+        (fn [] (lt a (inc b)))
+        (fn []
+            (isFizzBuzz a)
+            (fizzBuzz (inc a) b))
+        (fn [] (console.log 'end'))))))
+
+// run
+(fizzBuzz 1 15)
+</script>
+
+<script id="objects" type="text/snippet">
+(def person {
+    :name 'Yosbel',
+    :age  30
+})
+(console.log person.name)
+
+// mutate
+(alter person.name 'Yosbel Marín')
+(console.log person.name)
+
+// factory
+(def Person (fn [name, age]
+    {
+        :name name
+        :age  age
+    }))
+
+// create object
+(def obj (Person 'Yosbel Marín' 30))
+(console.log obj.name obj.age)
+</script>
+
+<script id="interop" type="text/snippet">
+// importing external modules
+(import 'react' React)
+
+// instantiate js classes
+(def obj (new SomeClass a b c))
+
+// mutate
+(alter document.someProp 'some value')
+
+// partially applied alter
+((alter document.someProp) 'updated!!')
+
+</script>
+
+</body>
+</html>
