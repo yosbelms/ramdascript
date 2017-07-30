@@ -1,8 +1,8 @@
 
-var nodes    = require('./nodes')
-var util     = require('./util')
-var T        = nodes.type
-var newNode  = nodes.node
+var nodes   = require('./nodes')
+var util    = require('./util')
+var T       = nodes.type
+var newNode = nodes.node
 
 // walk through nodes
 function walk(node, parent, ctx) {
@@ -38,7 +38,7 @@ function walk(node, parent, ctx) {
             visitObject(node, parent, ctx)
         break
         case T.JSBLOCK :
-            visitJsBlock(node, parent, ctx)
+            visitJSBlock(node, parent, ctx)
         break
         case T.NIL :
             visitNil(node, parent, ctx)
@@ -58,17 +58,17 @@ function walk(node, parent, ctx) {
 }
 
 function visitLiteral(node, parent, ctx) {
-    ctx.write(node.content)
+    ctx.write(node.content, node.loc)
 }
 
 function visitNil(node, parent, ctx) {
-    ctx.write('null')
+    ctx.write('null', node.loc)
 }
 
 function visitString(node, parent, ctx) {
     var str = node.content
     node.content = str.replace(/\n|\r\n/g, '\\\n')
-    ctx.write(node.content)
+    ctx.write(node.content, node.loc)
 }
 
 function visitIdent(node, parent, ctx) {
@@ -91,12 +91,12 @@ function visitIdent(node, parent, ctx) {
             cont = 'R.' + cont
         }
     }
-    ctx.write(cont)
+    ctx.write(cont, node.loc)
 }
 
 function visitSpecialPlaceholder(node, parent, ctx) {
     ctx.addUsedRamdaFn('__')
-    ctx.write('R.__')
+    ctx.write('R.__', node.loc)
 }
 
 function visitModule(node, parent, ctx) {
@@ -121,13 +121,13 @@ function visitSexpr(node, parent, ctx) {
             case 'new' :
                 operator = data[0]
                 data     = data.slice(1)
-                ctx.write('new ')
+                ctx.write('new ', node.loc)
             break
             case 'def' :
                 var varName = data[0]
                 var value   = data[1]
 
-                ctx.write('var ')
+                ctx.write('var ', node.loc)
                 walk(varName, node, ctx)
                 ctx.write(' = ')
                 if (value) {
@@ -142,10 +142,10 @@ function visitSexpr(node, parent, ctx) {
 
                 // curry function if args number is greater than 0
                 if (args.length === 0) {
-                    ctx.write('function (')
+                    ctx.write('function (', node.loc)
                 } else {
                     ctx.addUsedRamdaFn('curry')
-                    ctx.write('R.curry(function (')
+                    ctx.write('R.curry(function (', node.loc)
                 }
 
                 // write arguments
@@ -226,7 +226,7 @@ function visitSexpr(node, parent, ctx) {
                 // write the name the imported module
                 // will be recognized with
                 if (refer.type == T.IDENT) {
-                    ctx.write('var ')
+                    ctx.write('var ', node.loc)
                     walk(refer, node, ctx)
                     ctx.write(' = require(')
                     walk(modPath, node, ctx)
@@ -327,7 +327,7 @@ function visitObject(node, parent, ctx) {
     ctx.write('}')
 }
 
-function visitJsBlock(node, parent, ctx) {
+function visitJSBlock(node, parent, ctx) {
     var str = node.content
     node.content = util.trim(str.substring(2, str.length - 2))
     visitLiteral(node, parent, ctx)
@@ -338,17 +338,9 @@ function isIndentableNode(node) {
     return node.type === T.SEXPR
 }
 
-// write CommonJS wrapper
-function writeCommonJSWrapper(requireRamda, ctx) {
-    /*
-    if (Object.keys(ctx.usedRamdaFns).length > 0) {
-        ctx.writeTop('var R = require(\'ramda\')\n\n')
-    }
-    */
-
-    /*
-    Granular require for each Ramda function, for minimal bundle size
-    */
+// write CommonJS stub
+function writeCommonJSStub(ast, ctx, requireRamda) {
+    // Granular require for each Ramda function, for minimal bundle size
     if (requireRamda) {
         var usedFns = []
 
@@ -357,7 +349,21 @@ function writeCommonJSWrapper(requireRamda, ctx) {
         })
 
         if (usedFns.length > 0) {
-            ctx.writeTop('var R = {\n' + usedFns.join(',\n') + '\n}\n\n')
+            ctx.newLineTop()
+            ctx.newLineTop()
+            ctx.writeTop('}')
+            ctx.newLineTop()
+
+            usedFns.forEach(function(fnName, idx) {
+                if (idx != 0) {
+                    ctx.newLineTop()
+                    ctx.writeTop(',')
+                }
+                ctx.writeTop(fnName)
+            })
+
+            ctx.newLineTop()
+            ctx.writeTop('var R = {')
         }
     }
 
@@ -372,46 +378,49 @@ function writeCommonJSWrapper(requireRamda, ctx) {
     })
 }
 
-// write Closure wrapper
-function writeClosureWrapper(ctx) {
-    ctx.writeTop(';(function () {\n\n')
+// write IIFE stub
+function writeIIFEStub(ctx) {
+    ctx.newLineTop()
+    ctx.newLineTop()
+    ctx.writeTop(';(function () {')
+
     ctx.newLine()
     ctx.newLine()
     ctx.write('})()')
 }
 
-function writeWaterMark(ctx) {
+function writeCompilerInfo(ctx) {
     var version = require('../package.json').version
-    ctx.writeTop('// Generated by RamdaScript ' + version + '\n\n')
+    ctx.newLineTop()
+    ctx.newLineTop()
+    ctx.writeTop('// Generated by RamdaScript ' + version)
 }
 
 // convert the AST in JS code
 // params
-//     ast      AST
-//     ctx      shared context
-//     wrapper  module wrapper (commonjs, closure, none)
+//     ast    AST
+//     ctx    Shared context
+//     format Module format (cjs, iife, none)
 //
-exports.compileAst = function compileAst(ast, ctx, wrapper) {
+exports.astToChunks = function astToChunks(ast, ctx, format) {
     walk(ast, null, ctx)
+    format = format || 'none'
 
-    wrapper = wrapper || 'none'
-
-    switch (wrapper) {
-        case 'commonjs' :
-            writeCommonJSWrapper(true, ctx)
+    switch (format) {
+        case 'cjs' :
+            writeCommonJSStub(ast, ctx, true)
         break
-        case 'commonjs-export' :
-            writeCommonJSWrapper(false, ctx)
+        case 'cjs-export' :
+            writeCommonJSStub(ast, ctx, false)
         break
-        case 'closure' :
-            writeClosureWrapper(ctx)
+        case 'iife' :
+            writeIIFEStub(ctx)
         break
         case 'none' :
         break
         default :
-            throw '`' + wrapper + '` is not a valid wrapper'
+            throw '`' + format + '` is not a valid format'
     }
-
-    writeWaterMark(ctx)
-    return ctx.out()
+    writeCompilerInfo(ctx)
+    return ctx.chunks
 }

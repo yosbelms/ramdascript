@@ -107,7 +107,9 @@
 
     // Output JS code
     (alter outputJs (fn []
-        (alter output.value (RamdaScript.compile source.value))))
+        (alter output.value
+            (prop 'js'
+                (RamdaScript.compile source.value)))))
 
     // Select snippet
     (def setSource (fn [src]

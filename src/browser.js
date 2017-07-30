@@ -2,8 +2,8 @@ window.RamdaScript = module.exports = require('./ramdascript')
 window.RamdaScript.run = run
 
 function run(src) {
-    var js = RamdaScript.compile(src, {wrapper: 'none'})
-    var fn = new Function(js)
+    var result = RamdaScript.compile(src, {format: 'none'})
+    var fn     = new Function(result.js)
     return fn()
 }
 

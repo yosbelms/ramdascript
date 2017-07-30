@@ -21,15 +21,15 @@ var help    = ['',
 'Run .ram file containig RamdaScript code',
 '  -src    Route to source file with RamdaScript code',
 '',
-'compile [-src] [-dst] [-nowrap]',
+'compile [-src] [-dst] [-format]',
 '',
 'Compile to JavaScript and save as .js file',
 '  -src    Route to source file or directory with RamdaScript code',
 '          the default value is the current directory (cwd)',
 '  -dst    Route where the resulting JavaScript code will be saved',
 '          if route is "stdout" the resulting code will be sent to stdout',
-'  -wrap   Specify module wrapper, possible values are: commonjs, closure, none.',
-'          commonjs is the default',
+'  -format Specify module format, possible values are: cjs, iife, none.',
+'          cjs is the default',
 '',
 'eval [-src]',
 '',
@@ -92,12 +92,12 @@ function run(opts) {
     // register `.ram` extension in nodejs modules
     Module._extensions[util.ext] = function(module, filename) {
         var content = fs.readFileSync(filename, 'utf8')
-        var js = ram.compile(content, {
+        var result = ram.compile(content, {
             filename: filename,
-            // just use commonjs export `R` will be imported from global
-            wrapper : 'commonjs-export',
+            // just use commonjs export, `R` will be imported from global
+            format : 'cjs-export',
         })
-        module._compile(js, filename)
+        module._compile(result.js, filename)
     }
 
     var src = opts['src']
@@ -121,7 +121,7 @@ function _eval(opts) {
     }
 
     function run(src) {
-        var fn = new Function('R', ram.compile(src, '<eval>'))
+        var fn = new Function('R', ram.compile(src, '<eval>').js)
         fn(R)
     }
 }
@@ -130,7 +130,7 @@ function _eval(opts) {
 function compile(opts) {
     var srcPath  = opts['src'] || process.cwd()
     var dstPath  = opts['dst']
-    var wrapper  = opts['wrap'] || 'commonjs'
+    var format   = opts['format'] || 'cjs'
     var toStdout = dstPath === 'stdout'
     var stat     = fs.statSync(srcPath)
 
@@ -147,9 +147,9 @@ function compile(opts) {
     }
 
     if (stat.isFile()) {
-        compileFile(srcPath, dstPath, wrapper, toStdout)
+        compileFile(srcPath, dstPath, format, toStdout)
     } else if (stat.isDirectory()) {
-        compileDir(srcPath, dstPath, wrapper)
+        compileDir(srcPath, dstPath, format)
     }
 }
 
@@ -157,14 +157,14 @@ function compile(opts) {
 // files and saves the resulting JavaScript code to the provided destiny
 // if the destiny path is omitted the JavaScript code will be saved adjacent
 // to the RamdaScript source file
-function compileDir(srcPath, dstPath, wrapper, toStdout) {
-    fs.readdir(srcPath, function(err, list){
+function compileDir(srcPath, dstPath, format, toStdout) {
+    fs.readdir(srcPath, function(err, list) {
         if (err) throw err
 
-        list.forEach(function(fname){
+        list.forEach(function(fname) {
             fname = path.join(srcPath, fname)
 
-            fs.stat(fname, function(err, stat){
+            fs.stat(fname, function(err, stat) {
                 if (err) throw err
 
                 // skip files and dirs with name starting with `.`
@@ -173,9 +173,9 @@ function compileDir(srcPath, dstPath, wrapper, toStdout) {
                 }
 
                 if (stat.isFile() && path.extname(fname) === util.ext) {
-                    compileFile(fname, path.join(dstPath, path.basename(fname, util.ext) + '.js'), wrapper, toStdout)
+                    compileFile(fname, path.join(dstPath, path.basename(fname, util.ext) + '.js'), format, toStdout)
                 } else if (stat.isDirectory()) {
-                    compileDir(fname, path.join(dstPath, path.basename(fname)), wrapper, toStdout)
+                    compileDir(fname, path.join(dstPath, path.basename(fname)), format, toStdout)
                 }
             })
         })
@@ -185,39 +185,54 @@ function compileDir(srcPath, dstPath, wrapper, toStdout) {
 // compile a the provided file containig RamdaScript code and save the
 // resulting JavaScript code, if the destiny path is omitted the JavaScript code
 // will be saved adjacent to the RamdaScript source file
-function compileFile(srcPath, dstPath, wrapper, toStdout) {
+function compileFile(srcPath, dstPath, format, toStdout) {
     if (! fs.existsSync(dstPath)) {
         makePath(dstPath)
     }
 
     fs.readFile(srcPath, 'utf8', function(err, data) {
-        var js
-
         if (err) throw err
 
-        js = ram.compile(data, {
-            filename: srcPath,
-            wrapper : wrapper
+        var cwd         = process.cwd()
+        var smapDstPath = dstPath + '.map'
+        var smapSrcPath = path.relative(
+            path.dirname(
+                path.join(cwd, dstPath)),
+                path.join(cwd, srcPath))
+        var result = ram.compile(data, {
+            filename : srcPath,
+            format  : format,
+            sourceMap: !toStdout,
+            sourceMapCfg: {
+                source: smapSrcPath,
+                sourceContent: data
+            }
         })
 
         if (toStdout) {
-            process.stdout.write(js + '\n')
+            process.stdout.write(result.js + '\n')
             return
         }
 
-        if (js) {
-            fs.writeFile(dstPath, js, 'utf8', function(err){
+        if (result.js) {
+            result.js = result.js + '\n//# sourceMappingURL=' + path.basename(dstPath) + '.map'
+            fs.writeFile(dstPath, result.js, 'utf8', function(err) {
+                if (err) throw err
+            })
+        }
+
+        if (result.sourceMap) {
+            fs.writeFile(smapDstPath, result.sourceMap, 'utf8', function(err) {
                 if (err) throw err
             })
         }
     })
 }
 
-// makes a directory path in the filesysytem
-
+// makes a directory path in the filesystem
 function makePath(dirPath) {
     dirPath = path.dirname(dirPath).split(path.sep)
-    dirPath.reduce(function(dirPath, p){
+    dirPath.reduce(function(dirPath, p) {
         dirPath = path.join(dirPath, p)
         if (! fs.existsSync(dirPath)) {
             try {

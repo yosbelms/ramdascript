@@ -130,13 +130,13 @@ describe('Identifiers', function() {
         expect(vars.val).not.toBe(R.T)
     })
 
-    it('are not identified as Ramda function if is a property', function() {
+    it('are not identified as Ramda function if it is a property', function() {
         var vars = {}
         run('(def obj {:T 0}) (alter vars.val obj.T)', vars)
         expect(vars.val).not.toBe(R.T)
     })
 
-    it('are not identified as Ramda function if is previously defined', function() {
+    it('are not identified as Ramda function if it is previously defined', function() {
         var vars = {}
         run('(def T F) (alter vars.val (T))', vars)
         expect(vars.val).toBe(false)

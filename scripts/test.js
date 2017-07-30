@@ -6,7 +6,7 @@ global.T   = require('../src/nodes').type
 global.R   = require('../vendor/ramda')
 
 global.run = function run(src, vars) {
-    var js = ram.compile(src, '<eval>')
+    var js = ram.compile(src, {filename: '<eval>'}).js
     var fn = new Function('vars', js)
     return fn.call(null, vars)
 }

@@ -15,14 +15,16 @@ exports.launch = function launch(extCtx) {
     repl.start('ram> ', null, _eval)
 
     function _eval(code, ctx, file, cb) {
-        var js, err, result
+        var js
+        var err
+        var result
         try {
             // import passed context
             Object.assign(ctx, extCtx)
-            js = ram.compile(code, {
+            result = ram.compile(code, {
                 filename: '<repl>'
             })
-            result = vm.runInContext(js, ctx, file)
+            result = vm.runInContext(result.js, ctx, file)
         } catch (e) {
             err = e
         }
