@@ -106,15 +106,15 @@ run [-src]
 Run .ram file containig RamdaScript code
   -src    Route to source file with RamdaScript code
 
-compile [-src] [-dst] [-nowrap]
+compile [-src] [-dst] [-format]
 
 Compile to JavaScript and save as .js file
   -src    Route to source file or directory with RamdaScript code
           the default value is the current directory (cwd)
   -dst    Route where the resulting JavaScript code will be saved
           if route is "stdout" the resulting code will be sent to stdout
-  -wrap   Specify module wrapper, possible values are: commonjs, closure, none;
-          commonjs is the default
+  -format Specify module format, possible values are: cjs, iife, none;
+          cjs is the default
 
 eval [-src]
 
