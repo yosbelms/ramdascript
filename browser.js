@@ -190,7 +190,7 @@ process.umask = function() { return 0; };
 module.exports={
     "author"      : "Yosbel Marin",
     "name"        : "ramdascript",
-    "version"     : "0.3.0",
+    "version"     : "0.5.0",
     "license"     : "MIT",
     "description" : "JavaScript in the Ramda way",
     "repository"  : "https://github.com/yosbelms/ramdascript.git",
@@ -222,7 +222,7 @@ module.exports={
         "clojure",
         "lisp",
         "language",
-        "javascript"
+        "functional"
     ]
 }
 
@@ -231,8 +231,8 @@ window.RamdaScript = module.exports = require('./ramdascript')
 window.RamdaScript.run = run
 
 function run(src) {
-    var js = RamdaScript.compile(src, {wrapper: 'none'})
-    var fn = new Function(js)
+    var result = RamdaScript.compile(src, {format: 'none'})
+    var fn     = new Function(result.js)
     return fn()
 }
 
@@ -244,7 +244,7 @@ function runScripts() {
         if (scripts[i].type === 'text/ramdascript') {
             run(scripts[i].innerHTML)
         }
-    }   
+    }
 }
 
 if (window.addEventListener) {
@@ -252,12 +252,30 @@ if (window.addEventListener) {
 } else {
     window.attachEvent('onload', runScripts)
 }
-},{"./ramdascript":9}],5:[function(require,module,exports){
+},{"./ramdascript":10}],5:[function(require,module,exports){
 
-var nodes    = require('./nodes')
-var util     = require('./util')
-var T        = nodes.type
-var newNode  = nodes.node
+module.exports = function chunk(content, loc) {
+    var chunk = {
+        content : content || '',
+        loc     : loc
+    }
+
+    chunk.toString = chunkToString(chunk)
+
+    return chunk
+}
+
+function chunkToString(chunk) {
+	return function () {
+		return chunk.content
+	}
+}
+},{}],6:[function(require,module,exports){
+
+var nodes   = require('./nodes')
+var util    = require('./util')
+var T       = nodes.type
+var newNode = nodes.node
 
 // walk through nodes
 function walk(node, parent, ctx) {
@@ -293,7 +311,7 @@ function walk(node, parent, ctx) {
             visitObject(node, parent, ctx)
         break
         case T.JSBLOCK :
-            visitJsBlock(node, parent, ctx)
+            visitJSBlock(node, parent, ctx)
         break
         case T.NIL :
             visitNil(node, parent, ctx)
@@ -313,17 +331,17 @@ function walk(node, parent, ctx) {
 }
 
 function visitLiteral(node, parent, ctx) {
-    ctx.write(node.content)
+    ctx.write(node.content, node.loc)
 }
 
 function visitNil(node, parent, ctx) {
-    ctx.write('null')
+    ctx.write('null', node.loc)
 }
 
 function visitString(node, parent, ctx) {
     var str = node.content
     node.content = str.replace(/\n|\r\n/g, '\\\n')
-    ctx.write(node.content)
+    ctx.write(node.content, node.loc)
 }
 
 function visitIdent(node, parent, ctx) {
@@ -346,12 +364,12 @@ function visitIdent(node, parent, ctx) {
             cont = 'R.' + cont
         }
     }
-    ctx.write(cont)
+    ctx.write(cont, node.loc)
 }
 
 function visitSpecialPlaceholder(node, parent, ctx) {
     ctx.addUsedRamdaFn('__')
-    ctx.write('R.__')
+    ctx.write('R.__', node.loc)
 }
 
 function visitModule(node, parent, ctx) {
@@ -376,13 +394,13 @@ function visitSexpr(node, parent, ctx) {
             case 'new' :
                 operator = data[0]
                 data     = data.slice(1)
-                ctx.write('new ')
+                ctx.write('new ', node.loc)
             break
             case 'def' :
                 var varName = data[0]
                 var value   = data[1]
 
-                ctx.write('var ')
+                ctx.write('var ', node.loc)
                 walk(varName, node, ctx)
                 ctx.write(' = ')
                 if (value) {
@@ -397,10 +415,10 @@ function visitSexpr(node, parent, ctx) {
 
                 // curry function if args number is greater than 0
                 if (args.length === 0) {
-                    ctx.write('function (')
+                    ctx.write('function (', node.loc)
                 } else {
                     ctx.addUsedRamdaFn('curry')
-                    ctx.write('R.curry(function (')
+                    ctx.write('R.curry(function (', node.loc)
                 }
 
                 // write arguments
@@ -481,7 +499,7 @@ function visitSexpr(node, parent, ctx) {
                 // write the name the imported module
                 // will be recognized with
                 if (refer.type == T.IDENT) {
-                    ctx.write('var ')
+                    ctx.write('var ', node.loc)
                     walk(refer, node, ctx)
                     ctx.write(' = require(')
                     walk(modPath, node, ctx)
@@ -582,7 +600,7 @@ function visitObject(node, parent, ctx) {
     ctx.write('}')
 }
 
-function visitJsBlock(node, parent, ctx) {
+function visitJSBlock(node, parent, ctx) {
     var str = node.content
     node.content = util.trim(str.substring(2, str.length - 2))
     visitLiteral(node, parent, ctx)
@@ -593,17 +611,9 @@ function isIndentableNode(node) {
     return node.type === T.SEXPR
 }
 
-// write CommonJS wrapper
-function writeCommonJSWrapper(requireRamda, ctx) {
-    /*
-    if (Object.keys(ctx.usedRamdaFns).length > 0) {
-        ctx.writeTop('var R = require(\'ramda\')\n\n')
-    }
-    */
-
-    /*
-    Granular require for each Ramda function, for minimal bundle size
-    */
+// write CommonJS stub
+function writeCommonJSStub(ast, ctx, requireRamda) {
+    // Granular require for each Ramda function, for minimal bundle size
     if (requireRamda) {
         var usedFns = []
 
@@ -612,7 +622,21 @@ function writeCommonJSWrapper(requireRamda, ctx) {
         })
 
         if (usedFns.length > 0) {
-            ctx.writeTop('var R = {\n' + usedFns.join(',\n') + '\n}\n\n')
+            ctx.newLineTop()
+            ctx.newLineTop()
+            ctx.writeTop('}')
+            ctx.newLineTop()
+
+            usedFns.forEach(function(fnName, idx) {
+                if (idx != 0) {
+                    ctx.newLineTop()
+                    ctx.writeTop(',')
+                }
+                ctx.writeTop(fnName)
+            })
+
+            ctx.newLineTop()
+            ctx.writeTop('var R = {')
         }
     }
 
@@ -627,50 +651,55 @@ function writeCommonJSWrapper(requireRamda, ctx) {
     })
 }
 
-// write Closure wrapper
-function writeClosureWrapper(ctx) {
-    ctx.writeTop(';(function () {\n\n')
+// write IIFE stub
+function writeIIFEStub(ctx) {
+    ctx.newLineTop()
+    ctx.newLineTop()
+    ctx.writeTop(';(function () {')
+
     ctx.newLine()
     ctx.newLine()
     ctx.write('})()')
 }
 
-function writeWaterMark(ctx) {
+function writeCompilerInfo(ctx) {
     var version = require('../package.json').version
-    ctx.writeTop('// Generated by RamdaScript ' + version + '\n\n')
+    ctx.newLineTop()
+    ctx.newLineTop()
+    ctx.writeTop('// Generated by RamdaScript ' + version)
 }
 
 // convert the AST in JS code
 // params
-//     ast      AST
-//     ctx      shared context
-//     wrapper  module wrapper (commonjs, closure, none)
+//     ast    AST
+//     ctx    Shared context
+//     format Module format (cjs, iife, none)
 //
-exports.compileAst = function compileAst(ast, ctx, wrapper) {
+exports.astToChunks = function astToChunks(ast, ctx, format) {
     walk(ast, null, ctx)
+    format = format || 'none'
 
-    wrapper = wrapper || 'none'
-
-    switch (wrapper) {
-        case 'commonjs' :
-            writeCommonJSWrapper(true, ctx)
+    switch (format) {
+        case 'cjs' :
+            writeCommonJSStub(ast, ctx, true)
         break
-        case 'commonjs-export' :
-            writeCommonJSWrapper(false, ctx)
+        case 'cjs-export' :
+            writeCommonJSStub(ast, ctx, false)
         break
-        case 'closure' :
-            writeClosureWrapper(ctx)
+        case 'iife' :
+            writeIIFEStub(ctx)
         break
         case 'none' :
         break
         default :
-            throw '`' + wrapper + '` is not a valid wrapper'
+            throw '`' + format + '` is not a valid format'
     }
-
-    writeWaterMark(ctx)
-    return ctx.out()
+    writeCompilerInfo(ctx)
+    return ctx.chunks
 }
-},{"../package.json":3,"./nodes":7,"./util":11}],6:[function(require,module,exports){
+},{"../package.json":3,"./nodes":8,"./util":13}],7:[function(require,module,exports){
+
+var chunk = require('./chunk')
 
 // Returns a new compilation context object to be shared
 // between compilation steps (semantic analizing and compilation)
@@ -683,7 +712,7 @@ exports.newContext = function newContext(filename) {
         filename: filename || '<vm>',
 
         // the compiled JS
-        buffer: [],
+        chunks: [],
 
         indentLevel: 0,
 
@@ -702,22 +731,35 @@ exports.newContext = function newContext(filename) {
 
         // returns the compiled JS
         out: function out() {
-            return this.buffer.join('')
+            return this.chunks.join('')
         },
 
-        // write to the buffer
-        write: function(d) {
-            this.buffer.push(d)
+        // write a new chunk
+        write: function(d, loc) {
+            if (d.indexOf('\n') != -1) {
+                throw 'Can not write content having \\n'
+            }
+            this.chunks.push(chunk(d, loc))
         },
 
-        // write at top of the buffer
-        writeTop: function(d) {
-            this.buffer.unshift(d)
+        // unshift a new chunk
+        writeTop: function writeTop(d, loc) {
+            if (d.indexOf('\n') != -1) {
+                throw 'Can not write content having \\n'
+            }
+            this.chunks.unshift(chunk(d, loc))
         },
 
         // write a new line and indentation
         newLine: function newLine() {
-            this.buffer.push('\n' + this.currentIndent)
+            this.chunks.push(chunk('\n'))
+            this.chunks.push(chunk(this.currentIndent))
+        },
+
+        // write a new line and indentation
+        newLineTop: function newLineTop() {
+            this.chunks.unshift(chunk(this.currentIndent))
+            this.chunks.unshift(chunk('\n'))
         },
 
         // updates current indentation spaces depending
@@ -768,7 +810,7 @@ exports.newContext = function newContext(filename) {
         }
     }
 }
-},{}],7:[function(require,module,exports){
+},{"./chunk":5}],8:[function(require,module,exports){
 
 // node types
 exports.type = {
@@ -801,7 +843,7 @@ exports.node = function node(type, content, loc) {
         }
     }
 }
-},{}],8:[function(require,module,exports){
+},{}],9:[function(require,module,exports){
 (function (process){
 /* parser generated by jison 0.4.15 */
 /*
@@ -1523,42 +1565,96 @@ if (typeof module !== 'undefined' && require.main === module) {
 }
 }
 }).call(this,require('_process'))
-},{"./nodes":7,"_process":2,"fs":1,"path":undefined}],9:[function(require,module,exports){
+},{"./nodes":8,"_process":2,"fs":1,"path":undefined}],10:[function(require,module,exports){
 
-var Parser   = require('./parser').Parser
-var context  = require('./context')
-var compiler = require('./compiler')
-var semantic = require('./semantic')
-var util     = require('./util')
+var Parser    = require('./parser').Parser
+var context   = require('./context')
+var compiler  = require('./compiler')
+var semantic  = require('./semantic')
+var sourcemap = require('./sourcemap')
+var util      = require('./util')
 
 // Compiles RamdaScript source code to JS, if returnCtx is true it
 // return the context intead of compiled JS
 // otps:
-//     filename  The name of the source file
-//     wrapper   module wrapper (commonjs, closure, none)
+//     filename     The name of the source file
+//     format       Module format (cjs, iife, none)
+//     printErrors  Whether to print errors to console
+//     sourceMap    Whether to build sourcemaps
+//     sourceMapCfg Sourcemap configuration object
 //
-exports.compile = function compile(src, opts, returnCtx) {
-    opts    = opts || {}
-    var ctx = context.newContext(opts.filename)
-    var ast = parse(src, opts)
+exports.compile = function compile(src, opts) {
+    opts = opts || {}
+    var js     = ''
+    var smap   = ''
+    var ctx    = context.newContext(opts.filename)
+    var chunks = srcToChunks(src, opts, ctx)
+    if (chunks) {
+        js = chunks.join('')
+        if (opts.sourceMap) {
+            smap = chunksToSourceMap(chunks, opts.sourceMapCfg)
+        }
+    }
+    return {
+        js       : js,
+        ctx      : ctx,
+        sourceMap: smap
+    }
+}
 
+// transform RamdaScript source to chunks
+function srcToChunks(src, opts, ctx) {
+    opts = opts || {}
+    var ast = parse(src, opts)
     // check semantic
     var errors = semantic.checkAst(ast, ctx)
-
-    if (returnCtx) {
-        return ctx
-    }
-
     // there is semantic errors?
     if (errors) {
-        errors.forEach(function(e){
-            console.error(e)
-        })
+        if (opts.printErrors !== false) {
+                errors.forEach(function(e){
+                console.error(e)
+            })
+        }
         return
     // everything ok
     } else {
-        return compiler.compileAst(ast, ctx, opts.wrapper)
+        return compiler.astToChunks(ast, ctx, opts.format)
     }
+}
+
+// convert chunks to source map
+//     chunks array of chunks
+//     cfg    sourcemap config
+//
+function chunksToSourceMap(chunks, cfg) {
+    var loc
+    var outLine   = 0
+    var outColumn = 0
+    var smap      = sourcemap.newSourceMap()
+    var acc = ''
+
+    chunks.forEach(function(chunk) {
+        if (chunk.content === '\n') {
+            outLine   = outLine + 1
+            outColumn = 0
+        }
+        loc = chunk.loc
+        if (loc) {
+            smap.add(
+                // jison line tracking is 1 based,
+                // source maps reads it as 0 based
+                loc.firstLine - 1,
+                loc.firstColumn,
+                outLine,
+                outColumn
+            )
+        }
+        if (chunk.content !== '\n') {
+            outColumn = outColumn + chunk.content.length
+        }
+    })
+
+    return smap.generate(cfg)
 }
 
 // parses the RamdaScript code
@@ -1568,8 +1664,10 @@ function parse(src, opts) {
     return parser.parse(src)
 }
 
+exports.srcToChunks = srcToChunks
+exports.chunksToSourceMap = chunksToSourceMap
 exports.parse = parse
-},{"./compiler":5,"./context":6,"./parser":8,"./semantic":10,"./util":11}],10:[function(require,module,exports){
+},{"./compiler":6,"./context":7,"./parser":9,"./semantic":11,"./sourcemap":12,"./util":13}],11:[function(require,module,exports){
 
 var util    = require('./util')
 var nodes   = require('./nodes')
@@ -1744,7 +1842,159 @@ exports.checkAst = function checkAst(ast, ctx) {
     walk(ast, null, ctx)
     return ctx.hasError() ? ctx.errors : void 0
 }
-},{"./nodes":7,"./util":11}],11:[function(require,module,exports){
+},{"./nodes":8,"./util":13}],12:[function(require,module,exports){
+
+// This is a version,
+// the original code can be found at
+// https://github.com/jashkenas/coffeescript/tree/master/src/sourcemap.litcoffee
+
+var VLQ_SHIFT            = 5
+var VLQ_CONTINUATION_BIT = 1 << VLQ_SHIFT
+var VLQ_VALUE_MASK       = VLQ_CONTINUATION_BIT - 1
+var BASE64_CHARS         = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+
+function toVlq(value) {
+    var nextChunk
+    var vlq           = ''
+    var signBit       = value < 0 ? 1 : 0
+    var valueToEncode = (Math.abs(value) << 1) + signBit
+
+    while (valueToEncode || !vlq) {
+        nextChunk     = valueToEncode & VLQ_VALUE_MASK
+        valueToEncode = valueToEncode >> VLQ_SHIFT
+
+        if (valueToEncode) {
+            nextChunk |= VLQ_CONTINUATION_BIT
+        }
+
+        vlq += toBase64(nextChunk)
+    }
+    return vlq
+}
+
+function toBase64(value) {
+    var b64 = BASE64_CHARS[value]
+
+    if (!b64) {
+        throw 'Can not encode ' + value + ' to base-64'
+    }
+    return b64
+}
+
+var newLineMap = function newLineMap(l) {
+    return {
+        line    : l,
+        segments: [],
+
+        add: function(generatedColumn, sourceLine, sourceColumn) {
+            this.segments[generatedColumn] = {
+                line        : this.line,
+                column      : generatedColumn,
+                sourceLine  : sourceLine,
+                sourceColumn: sourceColumn
+            }
+
+            return this.segments
+        }
+    }
+}
+
+exports.newSourceMap = function newSourceMap() {
+    return {
+        lines: [],
+        names: null,
+
+        add: function(sourceLine, sourceColumn, generatedLine, generatedColumn) {
+            var line = this.lines[generatedLine]
+
+            if (!line) {
+                line = this.lines[generatedLine] = newLineMap(generatedLine)
+            }
+
+            line.add(generatedColumn, sourceLine, sourceColumn)
+        },
+
+        generate: function(cfg) {
+            cfg = cfg || {}
+
+            var i
+            var j
+            var line
+            var sm
+            var segment
+            var segmentsLen
+            var currentLine      = 0
+            var lastSourceLine   = 0
+            var lastSourceColumn = 0
+            var lastColumn       = 0
+            var linesLen         = this.lines.length
+            var mapping          = ''
+            var segmentSep       = ''
+
+            for (i = 0; i < linesLen; i++) {
+                line = this.lines[i]
+
+                if (!line) continue
+
+                segmentsLen = line.segments.length
+
+                for (j = 0; j < segmentsLen; j++) {
+                    segment = line.segments[j]
+
+                    if (!segment) continue
+
+                    while (currentLine < segment.line) {
+                        segmentSep = ''
+                        lastColumn = 0
+                        mapping    += ';'
+                        currentLine++
+                    }
+
+                    mapping += segmentSep
+                    mapping += toVlq(segment.column - lastColumn)
+                    mapping += toVlq(0)
+                    mapping += toVlq(segment.sourceLine - lastSourceLine)
+                    mapping += toVlq(segment.sourceColumn - lastSourceColumn)
+
+                    lastColumn       = segment.column
+                    lastSourceLine   = segment.sourceLine
+                    lastSourceColumn = segment.sourceColumn
+
+                    segmentSep = ','
+                }
+            }
+
+            sm = {
+                version       : 3,
+                file          : '',
+                sourceRoot    : '',
+                sources       : [''],
+                sourcesContent: [null],
+                names         : [],
+                mappings      : mapping
+            }
+
+            if (cfg.file) {
+                sm.file = cfg.file
+            }
+
+            if (cfg.sourceRoot) {
+                sm.sourceRoot = cfg.sourceRoot
+            }
+
+            if (cfg.source) {
+                sm.sources = [cfg.source]
+            }
+
+            if (cfg.sourceContent) {
+                sm.sourcesContent = [cfg.sourceContent]
+            }
+
+            return JSON.stringify(sm)
+        }
+    }
+}
+},{}],13:[function(require,module,exports){
 
 // RamdaScript file extension
 var ext = '.ram'

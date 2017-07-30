@@ -1,7 +1,7 @@
 {
     "author"      : "Yosbel Marin",
     "name"        : "ramdascript",
-    "version"     : "0.3.0",
+    "version"     : "0.5.0",
     "license"     : "MIT",
     "description" : "JavaScript in the Ramda way",
     "repository"  : "https://github.com/yosbelms/ramdascript.git",
@@ -33,6 +33,6 @@
         "clojure",
         "lisp",
         "language",
-        "javascript"
+        "functional"
     ]
 }
