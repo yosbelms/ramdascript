@@ -326,6 +326,16 @@ exports.isObject = function isObject(obj) {
     return obj && obj.constructor === Object
 }
 
+// register defined vars inside a node scope
+exports.addDefVar = function addDefVar(node, varName) {
+    node.defVars.push(varName)
+}
+
+// whether a variable is registered as defined iside a node scope
+exports.isDefVar = function isDefVar(node, varName) {
+    return node.defVars.indexOf(varName) !== -1
+}
+
 // format a string using `{}` placeholder
 // example
 //     u.format('Hello {0}', ['World'])

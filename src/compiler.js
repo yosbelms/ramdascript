@@ -10,6 +10,8 @@ function walk(node, parent, ctx) {
         return
     }
 
+    node.parent = parent
+
     // walk each node if array
     if (util.isArray(node)) {
         return node.forEach(function(node){
@@ -84,7 +86,7 @@ function visitIdent(node, parent, ctx) {
             && parent.content[0] === node
         )
         || parent.type === T.PROPERTY
-        || ctx.isDefinedVar(cont)
+        || isAccessibleVar(node, cont)
     )) {
         if (util.isRamdaFunction(cont)) {
             ctx.addUsedRamdaFn(cont)
@@ -165,13 +167,16 @@ function visitSexpr(node, parent, ctx) {
                 ctx.newLine()
 
                 if (body.length > 0) {
-                    ctx.write('return ')
+                    //ctx.write('return ')
 
                     // separate each s-expression by comma
                     body.forEach(function(item, idx, arr) {
+                        if (idx === arr.length - 1) {
+                            ctx.write('return ')
+                        }
                         walk(item, node, ctx)
+                        ctx.write(';')
                         if (idx < arr.length - 1) {
-                            ctx.write(', ')
                             ctx.newLine()
                         }
                     })
@@ -336,6 +341,13 @@ function visitJSBlock(node, parent, ctx) {
 // whether is a node that needs indentation before to write it
 function isIndentableNode(node) {
     return node.type === T.SEXPR
+}
+
+function isAccessibleVar(node, varName) {
+    if (!node) {
+        return false
+    }
+    return util.isDefVar(node, varName) || isAccessibleVar(node.parent, varName)
 }
 
 // write CommonJS stub

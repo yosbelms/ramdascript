@@ -52,8 +52,8 @@ function walk(node, parent, ctx) {
 
             switch (operator.content) {
                 case 'def':
-                    // only in the module scope
-                    if (parent.type !== T.MODULE) {
+                    // only in the module and function scope
+                    if (parent.type !== T.MODULE && !isFnLiteral(parent)) {
                         ctx.error('unexpected `def`', lineno)
                     }
                     // must have one or two arguments
@@ -61,14 +61,18 @@ function walk(node, parent, ctx) {
                         ctx.error('`def` must contain one or two arguments', lineno)
                     } else {
                         var varName = data[0].content
-                        // can only define a var once
-                        if (ctx.isDefinedVar(varName)) {
+                        // can only define a var once in the same scope
+                        if (util.isDefVar(parent, varName)) {
                             ctx.error('redefining `' + varName + '`', lineno)
                         } else {
-                            ctx.addDefinedVar(varName)
+                            util.addDefVar(parent, varName)
+                        }
+                        // can not be used as the last s-expression inside a function scope
+                        if (isFnLiteral(parent) && parent.content[parent.content.length - 1].operator === operator) {
+                            ctx.error('`def` can not be returned or used as expression', lineno)
                         }
                     }
-                    // can not defined using qualified idents
+                    // can not be defined using qualified idents
                     if (isQualifiedIdent(data[0])) {
                         ctx.error('unespected qualified ident `' + varName + '`', lineno)
                     }
@@ -161,6 +165,13 @@ function isRIdent(node) {
 
 function isQualifiedIdent(node) {
     return node && node.type === T.IDENT && node.content.indexOf('.') > -1
+}
+
+function isFnLiteral(node) {
+    return node &&
+           node.type === T.SEXPR &&
+           node.operator.type === T.IDENT &&
+           node.operator.content === 'fn'
 }
 
 function unexpected(subject) {

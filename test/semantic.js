@@ -17,9 +17,26 @@ describe('Semantic analizer', function() {
     })
 
     describe('`def`', function() {
-        it('can be used only in module scope', function() {
-            var ctx = getCtx('((def x))')
-            expect(contains(ctx.errors[0], 'def')).toBe(true)
+        describe('can be used', function() {
+            it('in module scope', function() {
+                var ctx = getCtx('(def x)')
+                expect(ctx.errors.length).toBe(0)
+            })
+
+            it('in function literal scope', function() {
+                var ctx = getCtx('(def somFunc (fn [] (def x) 1))')
+                expect(ctx.errors.length).toBe(0)
+            })
+
+            it('not as expression', function() {
+                var ctx = getCtx('((def x))')
+                expect(contains(ctx.errors[0], 'def')).toBe(true)
+            })
+
+            it('not as the last s-expression in a function scope', function() {
+                var ctx = getCtx('(def somFunc (fn [] (def x)))')
+                expect(contains(ctx.errors[0], 'def')).toBe(true)
+            })
         })
 
         it('must have arguments', function() {

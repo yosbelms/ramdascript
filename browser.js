@@ -283,6 +283,8 @@ function walk(node, parent, ctx) {
         return
     }
 
+    node.parent = parent
+
     // walk each node if array
     if (util.isArray(node)) {
         return node.forEach(function(node){
@@ -357,7 +359,7 @@ function visitIdent(node, parent, ctx) {
             && parent.content[0] === node
         )
         || parent.type === T.PROPERTY
-        || ctx.isDefinedVar(cont)
+        || isAccessibleVar(node, cont)
     )) {
         if (util.isRamdaFunction(cont)) {
             ctx.addUsedRamdaFn(cont)
@@ -438,13 +440,16 @@ function visitSexpr(node, parent, ctx) {
                 ctx.newLine()
 
                 if (body.length > 0) {
-                    ctx.write('return ')
+                    //ctx.write('return ')
 
                     // separate each s-expression by comma
                     body.forEach(function(item, idx, arr) {
+                        if (idx === arr.length - 1) {
+                            ctx.write('return ')
+                        }
                         walk(item, node, ctx)
+                        ctx.write(';')
                         if (idx < arr.length - 1) {
-                            ctx.write(', ')
                             ctx.newLine()
                         }
                     })
@@ -611,6 +616,13 @@ function isIndentableNode(node) {
     return node.type === T.SEXPR
 }
 
+function isAccessibleVar(node, varName) {
+    if (!node) {
+        return false
+    }
+    return util.isDefVar(node, varName) || isAccessibleVar(node.parent, varName)
+}
+
 // write CommonJS stub
 function writeCommonJSStub(ast, ctx, requireRamda) {
     // Granular require for each Ramda function, for minimal bundle size
@@ -724,9 +736,6 @@ exports.newContext = function newContext(filename) {
         // used Ramda functions
         usedRamdaFns: {},
 
-        // vars defined in a script
-        definedVars: {},
-
         errors: [],
 
         // returns the compiled JS
@@ -789,16 +798,6 @@ exports.newContext = function newContext(filename) {
             this.usedRamdaFns[name] = 0
         },
 
-        // register defined vars
-        addDefinedVar: function addDefinedVar(name) {
-            this.definedVars[name] = 0
-        },
-
-        // whether is registered as defined
-        isDefinedVar: function varIsDefined(name) {
-            return this.definedVars.hasOwnProperty(name)
-        },
-
         // add error
         error: function error(msg, lineno) {
             this.errors.push(msg + ' at ' + this.filename + ':' + lineno)
@@ -835,6 +834,8 @@ exports.node = function node(type, content, loc) {
     return {
         type    : type,
         content : content,
+        defVars : [],
+        parent  : null,
         loc     : loc && {
             firstLine  : loc.first_line,
             lastLine   : loc.last_line,
@@ -1722,8 +1723,8 @@ function walk(node, parent, ctx) {
 
             switch (operator.content) {
                 case 'def':
-                    // only in the module scope
-                    if (parent.type !== T.MODULE) {
+                    // only in the module and function scope
+                    if (parent.type !== T.MODULE && !isFnLiteral(parent)) {
                         ctx.error('unexpected `def`', lineno)
                     }
                     // must have one or two arguments
@@ -1731,14 +1732,18 @@ function walk(node, parent, ctx) {
                         ctx.error('`def` must contain one or two arguments', lineno)
                     } else {
                         var varName = data[0].content
-                        // can only define a var once
-                        if (ctx.isDefinedVar(varName)) {
+                        // can only define a var once in the same scope
+                        if (util.isDefVar(parent, varName)) {
                             ctx.error('redefining `' + varName + '`', lineno)
                         } else {
-                            ctx.addDefinedVar(varName)
+                            util.addDefVar(parent, varName)
+                        }
+                        // can not be used as the last s-expression inside a function scope
+                        if (isFnLiteral(parent) && parent.content[parent.content.length - 1].operator === operator) {
+                            ctx.error('`def` can not be returned or used as expression', lineno)
                         }
                     }
-                    // can not defined using qualified idents
+                    // can not be defined using qualified idents
                     if (isQualifiedIdent(data[0])) {
                         ctx.error('unespected qualified ident `' + varName + '`', lineno)
                     }
@@ -1831,6 +1836,13 @@ function isRIdent(node) {
 
 function isQualifiedIdent(node) {
     return node && node.type === T.IDENT && node.content.indexOf('.') > -1
+}
+
+function isFnLiteral(node) {
+    return node &&
+           node.type === T.SEXPR &&
+           node.operator.type === T.IDENT &&
+           node.operator.content === 'fn'
 }
 
 function unexpected(subject) {
@@ -2321,6 +2333,16 @@ exports.isArray = function isArray(obj) {
 
 exports.isObject = function isObject(obj) {
     return obj && obj.constructor === Object
+}
+
+// register defined vars inside a node scope
+exports.addDefVar = function addDefVar(node, varName) {
+    node.defVars.push(varName)
+}
+
+// whether a variable is registered as defined iside a node scope
+exports.isDefVar = function isDefVar(node, varName) {
+    return node.defVars.indexOf(varName) !== -1
 }
 
 // format a string using `{}` placeholder

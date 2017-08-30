@@ -22,6 +22,8 @@ exports.node = function node(type, content, loc) {
     return {
         type    : type,
         content : content,
+        defVars : [],
+        parent  : null,
         loc     : loc && {
             firstLine  : loc.first_line,
             lastLine   : loc.last_line,

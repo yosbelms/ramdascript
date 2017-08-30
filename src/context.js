@@ -24,9 +24,6 @@ exports.newContext = function newContext(filename) {
         // used Ramda functions
         usedRamdaFns: {},
 
-        // vars defined in a script
-        definedVars: {},
-
         errors: [],
 
         // returns the compiled JS
@@ -87,16 +84,6 @@ exports.newContext = function newContext(filename) {
         // register used Ramda functions
         addUsedRamdaFn: function addUsedRamdaFn(name) {
             this.usedRamdaFns[name] = 0
-        },
-
-        // register defined vars
-        addDefinedVar: function addDefinedVar(name) {
-            this.definedVars[name] = 0
-        },
-
-        // whether is registered as defined
-        isDefinedVar: function varIsDefined(name) {
-            return this.definedVars.hasOwnProperty(name)
         },
 
         // add error
