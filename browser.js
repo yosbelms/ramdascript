@@ -244,7 +244,7 @@ function runScripts() {
         if (scripts[i].type === 'text/ramdascript') {
             run(scripts[i].innerHTML)
         }
-    }   
+    }
 }
 
 if (window.addEventListener) {
@@ -948,7 +948,7 @@ case 19:
  this.$ = node(T.NUMBER, $$[$0], _$[$0])              
 break;
 case 20:
- this.$ = node(T.REGXP, $$[$0], _$[$0])               
+ this.$ = node(T.REGEXP, $$[$0], _$[$0])              
 break;
 case 21:
  this.$ = node(T.NIL, $$[$0], _$[$0])                 
