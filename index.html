@@ -76,7 +76,8 @@
                     <option name="objects">Objects</option>
                     <option name="interop">JS Interop</option>
                 </select>
-                <a id="runbtn" href="javascript:void(0)">Run</a>
+                <a id="runbtn" href="javascript:void(0)">Run</a> |
+                <a id="linkbtn" href="javascript:void(0)">Link</a>
             </div>
 
             <textarea id="source"></textarea>
@@ -88,10 +89,13 @@
 <script type="text/ramdascript">
 
     (def log console.log)
+    (def hash window.location.hash)
+    (def rhash /^#link:/)
     (def source (document.getElementById 'source'))
     (def output (document.getElementById 'output'))
     (def snippets (document.getElementById 'snippets'))
     (def runbtn (document.getElementById 'runbtn'))
+    (def linkbtn (document.getElementById 'linkbtn'))
 
     // Overide console.log
     (alter console.log (fn []
@@ -107,6 +111,9 @@
 
     // Output JS code
     (alter outputJs (fn []
+        ((bind linkbtn.setAttribute linkbtn) 'href'
+            (concat '#link:' (encodeURIComponent source.value)))
+
         (alter output.value (RamdaScript.compile source.value))))
 
     // Select snippet
@@ -133,9 +140,16 @@
 
     (alter source.onkeyup outputJs)
 
-    // Update source
-    (snippets.onchange)
-
+    // initialize
+    ((ifElse
+        (fn [] (test rhash hash))
+        (fn []
+            ((pipe
+                (replace rhash '')
+                decodeURIComponent
+                (alter source.value)) hash)
+            (outputJs))
+        snippets.onchange))
 </script>
 
 
