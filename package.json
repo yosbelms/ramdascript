@@ -1,7 +1,7 @@
 {
     "author"      : "Yosbel Marin",
     "name"        : "ramdascript",
-    "version"     : "0.6.0",
+    "version"     : "0.6.1",
     "license"     : "MIT",
     "description" : "JavaScript in the Ramda way",
     "repository"  : "https://github.com/yosbelms/ramdascript.git",
