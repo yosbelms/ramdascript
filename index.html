@@ -114,7 +114,7 @@
         ((bind linkbtn.setAttribute linkbtn) 'href'
             (concat '#link:' (encodeURIComponent source.value)))
 
-        (alter output.value (RamdaScript.compile source.value))))
+        (alter output.value (prop 'js' (RamdaScript.compile source.value)))))
 
     // Select snippet
     (def setSource (fn [src]
