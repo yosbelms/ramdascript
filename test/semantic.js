@@ -12,8 +12,7 @@ describe('Semantic analizer', function() {
         expect(contains(ctx.errors[2], T.STRING)).toBe(true)
         expect(contains(ctx.errors[3], T.NIL)).toBe(true)
         expect(contains(ctx.errors[4], T.NUMBER)).toBe(true)
-        expect(contains(ctx.errors[5], T.REGEX)).toBe(true)
-
+        expect(contains(ctx.errors[5], T.REGEXP)).toBe(true)
     })
 
     describe('`def`', function() {

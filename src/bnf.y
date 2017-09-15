@@ -70,7 +70,7 @@ Atom
     | SPECIAL_PLACEHOLDER    { $$ = node(T.SPECIAL_PLACEHOLDER, $1, @1) }
     | STRING                 { $$ = node(T.STRING, $1, @1)              }
     | NUMBER                 { $$ = node(T.NUMBER, $1, @1)              }
-    | REGEXP                 { $$ = node(T.REGXP, $1, @1)               }
+    | REGEXP                 { $$ = node(T.REGEXP, $1, @1)              }
     | NIL                    { $$ = node(T.NIL, $1, @1)                 }
     | BOOLEAN                { $$ = node(T.BOOLEAN, $1, @1)             }
     | JSBlock

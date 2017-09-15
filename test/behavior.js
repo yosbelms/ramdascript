@@ -142,3 +142,11 @@ describe('Identifiers', function() {
         expect(vars.val).toBe(false)
     })
 })
+
+describe('Regular Expression', function() {
+    it('should be passed as is to JS', function() {
+        var vars = {}
+        run('(def r /ab/) (alter vars.result (r.test \'ab\'))', vars)
+        expect(vars.result).toBe(true)
+    })
+})
