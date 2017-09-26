@@ -51,8 +51,10 @@ function walk(node, parent, ctx) {
         case T.IDENT :
             visitIdent(node, parent, ctx)
         break
-        case T.NUMBER  :
         case T.REGEXP  :
+            visitRegexp(node, parent, ctx)
+        break
+        case T.NUMBER  :
         case T.BOOLEAN :
         case T.LITERAL :
             visitLiteral(node, parent, ctx)
@@ -60,7 +62,20 @@ function walk(node, parent, ctx) {
 }
 
 function visitLiteral(node, parent, ctx) {
-    ctx.write(node.content, node.loc)
+    var content = node.content
+    var firstLine = node.loc.firstLine
+    var splitted
+
+    if (content.indexOf('\n') === -1) {
+        ctx.write(content, node.loc)
+        return
+    }
+
+    splitted = content.split('\n')
+    splitted.forEach(function(part, idx){
+        ctx.write(part, firstLine + idx)
+        ctx.newLine()
+    })
 }
 
 function visitNil(node, parent, ctx) {
@@ -70,7 +85,13 @@ function visitNil(node, parent, ctx) {
 function visitString(node, parent, ctx) {
     var str = node.content
     node.content = str.replace(/\n|\r\n/g, '\\\n')
-    ctx.write(node.content, node.loc)
+    visitLiteral(node, parent, ctx)
+}
+
+function visitRegexp(node, parent, ctx) {
+    var str = node.content
+    node.content = str.replace(/\n|\r\n/g, '')
+    visitLiteral(node, parent, ctx)
 }
 
 function visitIdent(node, parent, ctx) {
@@ -382,7 +403,7 @@ function writeCommonJSStub(ast, ctx, requireRamda) {
     ctx.newLine()
     ctx.newLine()
 
-    Object.keys(ctx.definedVars).forEach(function(name, idx, arr){
+    ast.defVars.forEach(function(name, idx, arr){
         ctx.write('exports.' + name + ' = ' + name)
         if (idx < arr.length - 1) {
             ctx.newLine()
