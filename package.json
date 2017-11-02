@@ -1,31 +1,25 @@
 {
-    "author"      : "Yosbel Marin",
-    "name"        : "ramdascript",
-    "version"     : "0.5.0",
-    "license"     : "MIT",
-    "description" : "JavaScript in the Ramda way",
-    "repository"  : "https://github.com/yosbelms/ramdascript.git",
-
+    "author": "Yosbel Marin",
+    "name": "ramdascript",
+    "version": "0.5.0",
+    "license": "MIT",
+    "description": "JavaScript in the Ramda way",
+    "repository": "https://github.com/yosbelms/ramdascript.git",
     "main": "./src/ramdascript",
-
     "preferGlobal": true,
-
     "bin": {
         "ram": "./bin/ram"
     },
-
     "scripts": {
-        "test"   : "node ./scripts/test.js",
-        "parser" : "node ./scripts/parser.js",
-        "browserify" : "node ./scripts/browserify.js > ./browser.js",
-        "all" : "npm run parser && npm run browserify && npm run test"
+        "test": "node ./scripts/test.js",
+        "parser": "node ./scripts/parser.js",
+        "browserify": "node ./scripts/browserify.js > ./browser.js",
+        "all": "npm run parser && npm run browserify && npm run test"
     },
-
     "devDependencies": {
-        "jison"   : "0.4.15",
-        "jasmine" : "2.3.2"
+        "jasmine": "2.3.2",
+        "jison": "0.4.15"
     },
-
     "keywords": [
         "ramda",
         "ramdascript",
@@ -34,5 +28,8 @@
         "lisp",
         "language",
         "functional"
-    ]
+    ],
+    "dependencies": {
+        "ramda": "^0.25.0"
+    }
 }

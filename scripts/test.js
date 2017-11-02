@@ -3,7 +3,7 @@ var jasmine = new Jasmine()
 
 global.ram = require('../src/ramdascript')
 global.T   = require('../src/nodes').type
-global.R   = require('../vendor/ramda')
+global.R   = require('ramda')
 
 global.run = function run(src, vars) {
     var js = ram.compile(src, {filename: '<eval>'}).js

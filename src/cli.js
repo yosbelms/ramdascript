@@ -1,5 +1,5 @@
 
-var R       = require('../vendor/ramda')
+var R       = require('ramda')
 var fs      = require('fs')
 var path    = require('path')
 var Module  = require('module')

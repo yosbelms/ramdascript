@@ -1,3 +1,4 @@
+window.R = require('ramda')
 window.RamdaScript = module.exports = require('./ramdascript')
 window.RamdaScript.run = run
 
