@@ -48,6 +48,9 @@ function walk(node, parent, ctx) {
         case T.STRING :
             visitString(node, parent, ctx)
         break
+        case T.COLLAPSED_STRING :
+            visitCollapsedString(node, parent, ctx)
+        break
         case T.IDENT :
             visitIdent(node, parent, ctx)
         break
@@ -85,6 +88,12 @@ function visitNil(node, parent, ctx) {
 function visitString(node, parent, ctx) {
     var str = node.content
     node.content = str.replace(/\n|\r\n/g, '\\\n')
+    visitLiteral(node, parent, ctx)
+}
+
+function visitCollapsedString(node, parent, ctx) {
+    var str = node.content
+    node.content = '\'' + str.substr(1).replace(/\'/g, '\\\'') + '\''
     visitLiteral(node, parent, ctx)
 }
 

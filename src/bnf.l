@@ -7,6 +7,7 @@
 "{#"([\s\S]*?)"#}"                          return 'JSBLOCK'
 
 "'"([^\\']|\\[\s\S])*"'"                    return 'STRING'
+
 "/"([^\\/]|\\[\s\S])*"/"[gimy]*             return 'REGEXP'
 
 "_"                                         return 'SPECIAL_PLACEHOLDER'
@@ -25,6 +26,9 @@
 "]"  return ']'
 ":"  return ':'
 ","  return ','
+
+"@"([\S])*\b                                return 'COLLAPSED_STRING'
+
 "."  return '.'
 
 $    return 'EOF'

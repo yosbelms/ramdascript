@@ -58,6 +58,11 @@ Property
             $$.key   = node(T.STRING, $2, @2)
             $$.value = $3
         }
+    | ':' COLLAPSED_STRING Atom {
+            $$       = node(T.PROPERTY)
+            $$.key   = node(T.COLLAPSED_STRING, $2, @2)
+            $$.value = $3
+        }
     ;
 
 AtomList
@@ -68,6 +73,7 @@ AtomList
 Atom
     : QualifiedIdent
     | SPECIAL_PLACEHOLDER    { $$ = node(T.SPECIAL_PLACEHOLDER, $1, @1) }
+    | COLLAPSED_STRING       { $$ = node(T.COLLAPSED_STRING, $1, @1)    }
     | STRING                 { $$ = node(T.STRING, $1, @1)              }
     | NUMBER                 { $$ = node(T.NUMBER, $1, @1)              }
     | REGEXP                 { $$ = node(T.REGEXP, $1, @1)              }
