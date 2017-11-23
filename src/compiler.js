@@ -281,6 +281,17 @@ function visitSexpr(node, parent, ctx) {
                     })
                 }
             return
+            case 'export' :
+                var exported = node.content[0]
+                if (exported.type === T.IDENT) {
+                    // export as default
+                    parent.exportedDefault = exported.content
+                } else if (exported.type === T.ARRAY) {
+                    exported.content.forEach(function(exported) {
+                        util.addExportedVar(parent, exported.content)
+                    })
+                }
+            return
         }
     }
 
@@ -412,12 +423,16 @@ function writeCommonJSStub(ast, ctx, requireRamda) {
     ctx.newLine()
     ctx.newLine()
 
-    ast.defVars.forEach(function(name, idx, arr){
-        ctx.write('exports.' + name + ' = ' + name)
-        if (idx < arr.length - 1) {
-            ctx.newLine()
-        }
-    })
+    if (ast.exportedDefault) {
+        ctx.write('module.exports = ' + ast.exportedDefault)
+    } else {
+        ast.exportedVars.forEach(function(name, idx, arr){
+            ctx.write('exports.' + name + ' = ' + name)
+            if (idx < arr.length - 1) {
+                ctx.newLine()
+            }
+        })
+    }
 }
 
 // write IIFE stub
