@@ -2,7 +2,7 @@
 // node types
 exports.type = {
     SPECIAL_PLACEHOLDER : 'SPECIAL_PLACEHOLDER',
-    COLLAPSED_STRING    : 'COLLAPSED_STRING',
+    KEY_IDENT : 'KEY_IDENT',
     MODULE   : 'MODULE',
     IDENT    : 'IDENT',
     STRING   : 'STRING',
