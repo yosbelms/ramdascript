@@ -6,7 +6,7 @@ var ram  = require('./ramdascript')
 // launch RamdaScript REPL, external variables can be
 // added to the context, example:
 //
-//     repl.launch({R: require('ramda')})
+//     repl.launch(R)
 //
 exports.launch = function launch(extCtx) {
     extCtx = extCtx || {}

@@ -3,7 +3,7 @@ window.RamdaScript = module.exports = require('./ramdascript')
 window.RamdaScript.run = run
 
 function run(src) {
-    var result = RamdaScript.compile(src, {format: 'none'})
+    var result = RamdaScript.compile(src, {format: 'iife'})
     var fn     = new Function(result.js)
     return fn()
 }

@@ -57,7 +57,7 @@ function dispatch(command, opts) {
             run(opts)
         break
         case 'repl' :
-            repl.launch({R: R})
+            repl.launch(R)
         break
         case 'eval' :
             _eval(opts)
@@ -70,6 +70,13 @@ function dispatch(command, opts) {
             } else {
                 console.log(help.join('\n'))
             }
+    }
+}
+
+function throwIfRequiredOption(opts, option) {
+    var val = opts[option]
+    if (val === '' || val === void 0) {
+        throw new Error('--' + option + ' option is required')
     }
 }
 
@@ -88,27 +95,39 @@ function parseOpts(argv) {
     return opts
 }
 
+// runs a .ram script
 function run(opts) {
+    throwIfRequiredOption(opts, 'src')
+
     // register `.ram` extension in nodejs modules
     Module._extensions[util.ext] = function(module, filename) {
         var content = fs.readFileSync(filename, 'utf8')
         var result = ram.compile(content, {
             filename: filename,
-            // just use commonjs export, `R` will be imported from global
-            format : 'cjs-export',
+            format: 'cjs',
         })
         module._compile(result.js, filename)
+    }
+
+    Module.prototype.load = function load(filename) {
+        var extension = path.extname(filename)
+        this.filename = filename
+        this.paths = Module._nodeModulePaths(path.dirname(filename))
+        Module._extensions[extension](this, filename)
+        return this.loaded = true
     }
 
     var src = opts['src']
     var absolute = path.resolve(process.cwd(), src)
     // globalize Ramda module to be used by loaded modules
-    global.R = R
+    Object.assign(global, R)
     require(absolute)
 }
 
 // executes eval command
 function _eval(opts) {
+    throwIfRequiredOption(opts, 'src')
+
     var src = opts['src']
 
     // read from stdin
@@ -167,8 +186,8 @@ function compileDir(srcPath, dstPath, format, toStdout) {
             fs.stat(fname, function(err, stat) {
                 if (err) throw err
 
-                // skip files and dirs with name starting with `.`
-                if (/^\./.test(fname)) {
+                // skip files and dirs with name starting with `.` or named `node_modules`
+                if (/^\./.test(fname) || fname === 'node_modules') {
                     return
                 }
 

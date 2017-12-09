@@ -96,30 +96,21 @@ function visitRegexp(node, parent, ctx) {
 
 function visitIdent(node, parent, ctx) {
     var cont = node.content
-
     // do not identify as Ramda function if
-    // the identifier is beeing defined
-    // or is a property or is previously defined
-    if (!(
-        (
-            parent.type === T.SEXPR
-            && parent.operator.content === 'def'
-            && parent.content[0] === node
-        )
-        || parent.type === T.PROPERTY
-        || isAccessibleVar(node, cont)
-    )) {
+    // the identifier is a property
+    if (parent.type !== T.PROPERTY) {
         if (util.isRamdaFunction(cont)) {
             ctx.addUsedRamdaFn(cont)
-            cont = 'R.' + cont
         }
     }
     ctx.write(cont, node.loc)
 }
 
 function visitSpecialPlaceholder(node, parent, ctx) {
-    ctx.addUsedRamdaFn('__')
-    ctx.write('R.__', node.loc)
+    var str = '__'
+    ctx.addUsedRamdaFn(str)
+    node.content = str
+    visitIdent(node, parent, ctx)
 }
 
 function visitModule(node, parent, ctx) {
@@ -364,41 +355,15 @@ function isIndentableNode(node) {
     return node.type === T.SEXPR
 }
 
-function isAccessibleVar(node, varName) {
-    if (!node) {
-        return false
-    }
-    return util.isDefVar(node, varName) || isAccessibleVar(node.parent, varName)
-}
-
 // write CommonJS stub
-function writeCommonJSStub(ast, ctx, requireRamda) {
+function writeCommonJSStub(ast, ctx) {
     // Granular require for each Ramda function, for minimal bundle size
-    if (requireRamda) {
-        var usedFns = []
+    ctx.newLineTop()
 
-        Object.keys(ctx.usedRamdaFns).forEach(function(key) {
-            usedFns.push(ctx.indentUnit + key + ': require(\'ramda/src/' + key + '\')')
-        })
-
-        if (usedFns.length > 0) {
-            ctx.newLineTop()
-            ctx.newLineTop()
-            ctx.writeTop('}')
-            ctx.newLineTop()
-
-            usedFns.forEach(function(fnName, idx) {
-                if (idx != 0) {
-                    ctx.newLineTop()
-                    ctx.writeTop(',')
-                }
-                ctx.writeTop(fnName)
-            })
-
-            ctx.newLineTop()
-            ctx.writeTop('var R = {')
-        }
-    }
+    Object.keys(ctx.usedRamdaFns).forEach(function(key) {
+        ctx.newLineTop()
+        ctx.writeTop('var ' + key + ' = require(\'ramda/src/' + key + '\')')
+    })
 
     ctx.newLine()
     ctx.newLine()
@@ -415,6 +380,11 @@ function writeCommonJSStub(ast, ctx, requireRamda) {
 function writeIIFEStub(ctx) {
     ctx.newLineTop()
     ctx.newLineTop()
+
+    Object.keys(ctx.usedRamdaFns).forEach(function(key) {
+        ctx.newLineTop()
+        ctx.writeTop('var ' + key + ' = R.' + key)
+    })
     ctx.writeTop(';(function () {')
 
     ctx.newLine()
@@ -441,10 +411,7 @@ exports.astToChunks = function astToChunks(ast, ctx, format) {
 
     switch (format) {
         case 'cjs' :
-            writeCommonJSStub(ast, ctx, true)
-        break
-        case 'cjs-export' :
-            writeCommonJSStub(ast, ctx, false)
+            writeCommonJSStub(ast, ctx)
         break
         case 'iife' :
             writeIIFEStub(ctx)
