@@ -2,32 +2,41 @@
 var repl = require('repl')
 var vm   = require('vm')
 var ram  = require('./ramdascript')
+var util = require('./util')
 
 // launch RamdaScript REPL, external variables can be
 // added to the context, example:
 //
-//     repl.launch(R)
+//     repl.launch({R: require('ramda')})
 //
 exports.launch = function launch(extCtx) {
     extCtx = extCtx || {}
-
+    Object.assign(global, extCtx)
     // launch
-    repl.start('ram> ', null, _eval)
+    repl.start({
+        prompt : 'ram> ',
+        eval   : _eval,
+        writer : util.inspect
+    })
+}
 
-    function _eval(code, ctx, file, cb) {
-        var js
-        var err
-        var result
-        try {
-            // import passed context
-            Object.assign(ctx, extCtx)
-            result = ram.compile(code, {
-                filename: '<repl>'
-            })
-            result = vm.runInContext(result.js, ctx, file)
-        } catch (e) {
-            err = e
-        }
-        cb(err, result)
+function _eval(code, ctx, file, cb) {
+    var err
+    var result
+    var value
+    var filename = '<repl>'
+    try {
+        result = ram.compile(code, {
+            filename: filename,
+            format: 'none'
+        })
+        value = vm.runInThisContext(result.js, {
+            filename: filename,
+            lineOffset: 0,
+            displayErrors: true
+        })
+    } catch (e) {
+        err = e
     }
+    cb(err, value)
 }

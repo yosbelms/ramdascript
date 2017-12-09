@@ -57,7 +57,7 @@ function dispatch(command, opts) {
             run(opts)
         break
         case 'repl' :
-            repl.launch(R)
+            repl.launch({R: R})
         break
         case 'eval' :
             _eval(opts)

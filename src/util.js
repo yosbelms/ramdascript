@@ -101,6 +101,42 @@ exports.isDefVar = function isDefVar(node, varName) {
     return node.defVars.indexOf(varName) !== -1
 }
 
+exports.inspect = function inspect(val, indent) {
+    indent = R.defaultTo(0, indent)
+    var indentUnit = '  '
+    var indentStr = R.times(R.always(indentUnit), indent).join('')
+    if (val === void 0) {
+        return 'void'
+    }
+    switch (R.type(val)) {
+        case 'Null' :
+            return 'nil'
+        case 'String' :
+            return '\'' + val + '\''
+        case 'RegExp' :
+            return '/' + val.source + '/' + val.flags
+        case 'Date' :
+            return '(new Date \'' + val.toString() + '\')'
+        case 'Boolean' :
+            return val ? 'true' : 'false'
+        case 'Function' :
+            return '(func [...])'
+        case 'Object' :
+            indent++
+            var kv = R.keys(val).map(function(k) {
+                return indentStr + indentUnit + ':' + k + ' ' + inspect(val[k], indent)
+            })
+            return kv.length ? '{\n' + kv.join('\n') + '\n' + indentStr + '}' : '{}'
+        case 'Array' :
+            var arr = val.map(function(item) {
+                return inspect(item)
+            })
+            return '[' + arr.join(' ') +  ']'
+
+    }
+    return val
+}
+
 // format a string using `{}` placeholder
 // example
 //     u.format('Hello {0}', ['World'])

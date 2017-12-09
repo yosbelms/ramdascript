@@ -1,4 +1,3 @@
-
 var nodes   = require('./nodes')
 var util    = require('./util')
 var T       = nodes.type
@@ -378,6 +377,16 @@ function writeCommonJSStub(ast, ctx) {
 
 // write IIFE stub
 function writeIIFEStub(ctx) {
+    writeRamdaFunctionAsGlobalStub(ctx)
+    ctx.writeTop(';(function () {')
+
+    ctx.newLine()
+    ctx.newLine()
+    ctx.write('})()')
+}
+
+// write each used Ramda function as if `R` is in the global scope
+function writeRamdaFunctionAsGlobalStub(ctx) {
     ctx.newLineTop()
     ctx.newLineTop()
 
@@ -385,11 +394,6 @@ function writeIIFEStub(ctx) {
         ctx.newLineTop()
         ctx.writeTop('var ' + key + ' = R.' + key)
     })
-    ctx.writeTop(';(function () {')
-
-    ctx.newLine()
-    ctx.newLine()
-    ctx.write('})()')
 }
 
 function writeCompilerInfo(ctx) {
@@ -417,6 +421,7 @@ exports.astToChunks = function astToChunks(ast, ctx, format) {
             writeIIFEStub(ctx)
         break
         case 'none' :
+            writeRamdaFunctionAsGlobalStub(ctx)
         break
         default :
             throw '`' + format + '` is not a valid format'
