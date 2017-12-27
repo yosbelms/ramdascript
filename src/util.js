@@ -62,6 +62,7 @@ var BuiltinFunctions = [
     'fn',
     'alter',
     'import',
+    'export'
 ]
 
 var RamdaFunctions = R.keys(R)
@@ -135,6 +136,16 @@ exports.inspect = function inspect(val, indent) {
 
     }
     return val
+}
+
+// register exported vars inside a node scope
+exports.addExportedVar = function addExportedVar(node, varName) {
+    node.exportedVars.push(varName)
+}
+
+// whether a variable is exported iside a node scope
+exports.isExportedVar = function isExportedVar(node, varName) {
+    return node.exportedVars.indexOf(varName) !== -1
 }
 
 // format a string using `{}` placeholder

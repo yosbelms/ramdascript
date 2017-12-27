@@ -7,6 +7,7 @@
 "{#"([\s\S]*?)"#}"                          return 'JSBLOCK'
 
 "'"([^\\']|\\[\s\S])*"'"                    return 'STRING'
+
 "/"([^\\/]|\\[\s\S])*"/"[gimy]*             return 'REGEXP'
 
 "_"                                         return 'SPECIAL_PLACEHOLDER'
@@ -17,6 +18,8 @@
 0x[\da-fA-F]+|^\d*\.?\d+(?:[eE][+-]?\d+)?\b return 'NUMBER'
 [\$_a-zA-Z\x7f-\uffff]+[\$\w\x7f-\uffff]*   return 'IDENT'
 
+":"\s*([\S])+\b                                return 'KEY_IDENT'
+
 "{"  return '{'
 "}"  return '}'
 "("  return '('
@@ -25,6 +28,9 @@
 "]"  return ']'
 ":"  return ':'
 ","  return ','
+
+
+
 "."  return '.'
 
 $    return 'EOF'

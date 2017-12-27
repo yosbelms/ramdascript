@@ -47,6 +47,9 @@ function walk(node, parent, ctx) {
         case T.STRING :
             visitString(node, parent, ctx)
         break
+        case T.KEY_IDENT :
+            visitKeyIdent(node, parent, ctx)
+        break
         case T.IDENT :
             visitIdent(node, parent, ctx)
         break
@@ -84,6 +87,12 @@ function visitNil(node, parent, ctx) {
 function visitString(node, parent, ctx) {
     var str = node.content
     node.content = str.replace(/\n|\r\n/g, '\\\n')
+    visitLiteral(node, parent, ctx)
+}
+
+function visitKeyIdent(node, parent, ctx) {
+    var str = node.content
+    node.content = '\'' + str.substr(1).replace(/\'/g, '\\\'').trim() + '\''
     visitLiteral(node, parent, ctx)
 }
 
@@ -262,6 +271,17 @@ function visitSexpr(node, parent, ctx) {
                     })
                 }
             return
+            case 'export' :
+                var exported = node.content[0]
+                if (exported.type === T.IDENT) {
+                    // export as default
+                    parent.exportedDefault = exported.content
+                } else if (exported.type === T.ARRAY) {
+                    exported.content.forEach(function(exported) {
+                        util.addExportedVar(parent, exported.content)
+                    })
+                }
+            return
         }
     }
 
@@ -367,12 +387,16 @@ function writeCommonJSStub(ast, ctx) {
     ctx.newLine()
     ctx.newLine()
 
-    ast.defVars.forEach(function(name, idx, arr){
-        ctx.write('exports.' + name + ' = ' + name)
-        if (idx < arr.length - 1) {
-            ctx.newLine()
-        }
-    })
+    if (ast.exportedDefault) {
+        ctx.write('module.exports = ' + ast.exportedDefault)
+    } else {
+        ast.exportedVars.forEach(function(name, idx, arr){
+            ctx.write('exports.' + name + ' = ' + name)
+            if (idx < arr.length - 1) {
+                ctx.newLine()
+            }
+        })
+    }
 }
 
 // write IIFE stub

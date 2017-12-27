@@ -105,6 +105,49 @@ function walk(node, parent, ctx) {
                         }
                     }
                 break
+                case 'export' :
+                    var exported
+                    function isDefined (varName, parent) {
+                        var defined = false
+                        parent.content.forEach(function(node) {
+                            if (node.type === T.SEXPR
+                                && node.operator.content === 'def'
+                                && node.content[0].content === varName) {
+                                defined = true
+                            }
+                        })
+                        return defined
+                    }
+
+                    if (parent.type === T.MODULE) {
+                        // data must be at least
+                        if (data.length === 1) {
+                            exported = data[0]
+                            if (exported.type === T.IDENT) {
+                                // it must be defined or imported
+                                if (!isDefined(exported.content, parent)) {
+                                    ctx.error('\'' + exported.content + '\' is not defined', exported.loc.firstLine)
+                                }
+                            } else if (exported.type == T.ARRAY) {
+                                if (exported.content.length > 0) {
+                                    exported.content.forEach(function(node) {
+                                        if (!isDefined(node.content, parent)) {
+                                            ctx.error('\'' + node.content + '\' is not defined', node.loc.firstLine)
+                                        }
+                                    })
+                                } else {
+                                    ctx.error('expected identifier', exported.loc.firstLine)
+                                }
+                            } else {
+                                ctx.error('invalid exported element', lineno)
+                            }
+                        } else {
+                            ctx.error('invalid exported element', lineno)
+                        }
+                    } else {
+                        ctx.error('only can be exported in module scope', lineno)
+                    }
+                break
                 case 'new' :
                     // must provide a class
                     if (data.length === 0) {

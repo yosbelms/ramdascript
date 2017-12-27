@@ -11,6 +11,10 @@ global.run = function run(src, vars) {
     return fn.call(null, vars)
 }
 
+global.compile = function compile(src, format) {
+    return ram.compile(src, {filename: '<eval>', format: format}).js
+}
+
 global.contains = function(stack, needle) {
     return stack && stack.indexOf && stack.indexOf(needle) > -1
 }

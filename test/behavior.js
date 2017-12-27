@@ -150,3 +150,29 @@ describe('Regular Expression', function() {
         expect(vars.result).toBe(true)
     })
 })
+
+describe('Key Identifier', function() {
+    it('should compile to literal when used as value', function() {
+        var vars = {}
+        run('(alter vars.someKey :someKey)', vars)
+        expect(vars.someKey).toBe('someKey')
+    })
+
+    it('allow to be as object key', function() {
+        var vars = {}
+        run('(alter vars.result {:key 1})', vars)
+        expect(vars.result).toEqual({key: 1})
+    })
+})
+
+describe('Export', function() {
+    it('should export many modules', function() {
+        var js = compile('(def exported 1) (export [exported])', 'cjs')
+        expect(contains(js, 'exports.exported = exported')).toBe(true)
+    })
+
+    it('should export default', function() {
+        var js = compile('(def exported 1) (export exported)', 'cjs')
+        expect(contains(js, 'module.exports = exported')).toBe(true)
+    })
+})

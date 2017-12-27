@@ -48,15 +48,10 @@ PropertyList
     ;
 
 Property
-    : ':' IDENT Atom  {
+    : KEY_IDENT AtomNoKeyIdent  {
             $$       = node(T.PROPERTY)
-            $$.key   = node(T.IDENT, $2, @2)
-            $$.value = $3
-        }
-    | ':' STRING Atom {
-            $$       = node(T.PROPERTY)
-            $$.key   = node(T.STRING, $2, @2)
-            $$.value = $3
+            $$.key   = node(T.KEY_IDENT, $1, @1)
+            $$.value = $2
         }
     ;
 
@@ -66,6 +61,11 @@ AtomList
     ;
 
 Atom
+    : AtomNoKeyIdent
+    | KEY_IDENT               { $$ = node(T.KEY_IDENT, $1, @1) }
+    ;
+
+AtomNoKeyIdent
     : QualifiedIdent
     | SPECIAL_PLACEHOLDER    { $$ = node(T.SPECIAL_PLACEHOLDER, $1, @1) }
     | STRING                 { $$ = node(T.STRING, $1, @1)              }
