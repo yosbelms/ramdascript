@@ -143,4 +143,5 @@ describe('Semantic analizer', function() {
         expect(contains(ctx.errors[1], 'alter')).toBe(true)
         expect(contains(ctx.errors[2], 'new')).toBe(true)
     })
+
 })
