@@ -167,7 +167,7 @@ function visitSexpr(node, parent, ctx) {
                     ctx.write('function (', node.loc)
                 } else {
                     ctx.addUsedRamdaFn('curry')
-                    ctx.write('R.curry(function (', node.loc)
+                    ctx.write('curry(function (', node.loc)
                 }
 
                 // write arguments
@@ -416,7 +416,7 @@ function writeRamdaFunctionAsGlobalStub(ctx) {
 
     Object.keys(ctx.usedRamdaFns).forEach(function(key) {
         ctx.newLineTop()
-        ctx.writeTop('var ' + key + ' = R.' + key)
+        ctx.writeTop('var ' + key + ' =' + key)
     })
 }
 
