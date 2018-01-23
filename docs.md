@@ -176,6 +176,7 @@ RamdaScript uses a S-Expression based syntax made popular by the Lisp family. In
 - `fn`
 - `alter`
 - `import`
+- `export`
 
 Ramda functions are very well documented [here](http://ramdajs.com/docs/)
 
@@ -223,6 +224,12 @@ Null value
 nil
 ```
 
+Key Identifier
+
+```
+:keyIdent
+```
+
 Array
 
 ```
@@ -267,7 +274,7 @@ Optional commas, can be used to separate elements inside S-Expression, Array ite
 ```
 (a, b, c)
 [1, 2, 3]
-{:a 1, b: 2}
+{:a 1, :b 2}
 ```
 
 ### Functions
@@ -333,7 +340,19 @@ Imports external modules
 (import 'sanctuary' [Maybe, Just, Nothing])
 ```
 
-The import function translates to CommonJS.
+#### Export
+
+Exports from a module
+
+```
+(export [func1 func2])
+```
+
+export as default
+
+```
+(export exportedAsDefault)
+```
 
 #### More functions
 
