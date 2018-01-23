@@ -416,7 +416,7 @@ function writeRamdaFunctionAsGlobalStub(ctx) {
 
     Object.keys(ctx.usedRamdaFns).forEach(function(key) {
         ctx.newLineTop()
-        ctx.writeTop('var ' + key + ' =' + key)
+        ctx.writeTop('var ' + key + ' = R.' + key)
     })
 }
 
