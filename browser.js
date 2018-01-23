@@ -11790,7 +11790,7 @@ window.RamdaScript = module.exports = require('./ramdascript')
 window.RamdaScript.run = run
 
 function run(src) {
-    var result = RamdaScript.compile(src, {format: 'none'})
+    var result = RamdaScript.compile(src, {format: 'iife'})
     var fn     = new Function(result.js)
     return fn()
 }
@@ -11830,7 +11830,6 @@ function chunkToString(chunk) {
 	}
 }
 },{}],325:[function(require,module,exports){
-
 var nodes   = require('./nodes')
 var util    = require('./util')
 var T       = nodes.type
@@ -11880,6 +11879,9 @@ function walk(node, parent, ctx) {
         case T.STRING :
             visitString(node, parent, ctx)
         break
+        case T.KEY_IDENT :
+            visitKeyIdent(node, parent, ctx)
+        break
         case T.IDENT :
             visitIdent(node, parent, ctx)
         break
@@ -11920,6 +11922,12 @@ function visitString(node, parent, ctx) {
     visitLiteral(node, parent, ctx)
 }
 
+function visitKeyIdent(node, parent, ctx) {
+    var str = node.content
+    node.content = '\'' + str.substr(1).replace(/\'/g, '\\\'').trim() + '\''
+    visitLiteral(node, parent, ctx)
+}
+
 function visitRegexp(node, parent, ctx) {
     var str = node.content
     node.content = str.replace(/\n|\r\n/g, '')
@@ -11928,30 +11936,21 @@ function visitRegexp(node, parent, ctx) {
 
 function visitIdent(node, parent, ctx) {
     var cont = node.content
-
     // do not identify as Ramda function if
-    // the identifier is beeing defined
-    // or is a property or is previously defined
-    if (!(
-        (
-            parent.type === T.SEXPR
-            && parent.operator.content === 'def'
-            && parent.content[0] === node
-        )
-        || parent.type === T.PROPERTY
-        || isAccessibleVar(node, cont)
-    )) {
+    // the identifier is a property
+    if (parent.type !== T.PROPERTY) {
         if (util.isRamdaFunction(cont)) {
             ctx.addUsedRamdaFn(cont)
-            cont = 'R.' + cont
         }
     }
     ctx.write(cont, node.loc)
 }
 
 function visitSpecialPlaceholder(node, parent, ctx) {
-    ctx.addUsedRamdaFn('__')
-    ctx.write('R.__', node.loc)
+    var str = '__'
+    ctx.addUsedRamdaFn(str)
+    node.content = str
+    visitIdent(node, parent, ctx)
 }
 
 function visitModule(node, parent, ctx) {
@@ -12000,7 +11999,7 @@ function visitSexpr(node, parent, ctx) {
                     ctx.write('function (', node.loc)
                 } else {
                     ctx.addUsedRamdaFn('curry')
-                    ctx.write('R.curry(function (', node.loc)
+                    ctx.write('curry(function (', node.loc)
                 }
 
                 // write arguments
@@ -12104,6 +12103,17 @@ function visitSexpr(node, parent, ctx) {
                     })
                 }
             return
+            case 'export' :
+                var exported = node.content[0]
+                if (exported.type === T.IDENT) {
+                    // export as default
+                    parent.exportedDefault = exported.content
+                } else if (exported.type === T.ARRAY) {
+                    exported.content.forEach(function(exported) {
+                        util.addExportedVar(parent, exported.content)
+                    })
+                }
+            return
         }
     }
 
@@ -12196,62 +12206,50 @@ function isIndentableNode(node) {
     return node.type === T.SEXPR
 }
 
-function isAccessibleVar(node, varName) {
-    if (!node) {
-        return false
-    }
-    return util.isDefVar(node, varName) || isAccessibleVar(node.parent, varName)
-}
-
 // write CommonJS stub
-function writeCommonJSStub(ast, ctx, requireRamda) {
+function writeCommonJSStub(ast, ctx) {
     // Granular require for each Ramda function, for minimal bundle size
-    if (requireRamda) {
-        var usedFns = []
+    ctx.newLineTop()
 
-        Object.keys(ctx.usedRamdaFns).forEach(function(key) {
-            usedFns.push(ctx.indentUnit + key + ': require(\'ramda/src/' + key + '\')')
-        })
-
-        if (usedFns.length > 0) {
-            ctx.newLineTop()
-            ctx.newLineTop()
-            ctx.writeTop('}')
-            ctx.newLineTop()
-
-            usedFns.forEach(function(fnName, idx) {
-                if (idx != 0) {
-                    ctx.newLineTop()
-                    ctx.writeTop(',')
-                }
-                ctx.writeTop(fnName)
-            })
-
-            ctx.newLineTop()
-            ctx.writeTop('var R = {')
-        }
-    }
-
-    ctx.newLine()
-    ctx.newLine()
-
-    ast.defVars.forEach(function(name, idx, arr){
-        ctx.write('exports.' + name + ' = ' + name)
-        if (idx < arr.length - 1) {
-            ctx.newLine()
-        }
+    Object.keys(ctx.usedRamdaFns).forEach(function(key) {
+        ctx.newLineTop()
+        ctx.writeTop('var ' + key + ' = require(\'ramda/src/' + key + '\')')
     })
+
+    ctx.newLine()
+    ctx.newLine()
+
+    if (ast.exportedDefault) {
+        ctx.write('module.exports = ' + ast.exportedDefault)
+    } else {
+        ast.exportedVars.forEach(function(name, idx, arr){
+            ctx.write('exports.' + name + ' = ' + name)
+            if (idx < arr.length - 1) {
+                ctx.newLine()
+            }
+        })
+    }
 }
 
 // write IIFE stub
 function writeIIFEStub(ctx) {
-    ctx.newLineTop()
-    ctx.newLineTop()
+    writeRamdaFunctionAsGlobalStub(ctx)
     ctx.writeTop(';(function () {')
 
     ctx.newLine()
     ctx.newLine()
     ctx.write('})()')
+}
+
+// write each used Ramda function as if `R` is in the global scope
+function writeRamdaFunctionAsGlobalStub(ctx) {
+    ctx.newLineTop()
+    ctx.newLineTop()
+
+    Object.keys(ctx.usedRamdaFns).forEach(function(key) {
+        ctx.newLineTop()
+        ctx.writeTop('var ' + key + ' = R.' + key)
+    })
 }
 
 function writeCompilerInfo(ctx) {
@@ -12273,15 +12271,13 @@ exports.astToChunks = function astToChunks(ast, ctx, format) {
 
     switch (format) {
         case 'cjs' :
-            writeCommonJSStub(ast, ctx, true)
-        break
-        case 'cjs-export' :
-            writeCommonJSStub(ast, ctx, false)
+            writeCommonJSStub(ast, ctx)
         break
         case 'iife' :
             writeIIFEStub(ctx)
         break
         case 'none' :
+            writeRamdaFunctionAsGlobalStub(ctx)
         break
         default :
             throw '`' + format + '` is not a valid format'
@@ -12394,6 +12390,7 @@ exports.newContext = function newContext(filename) {
 // node types
 exports.type = {
     SPECIAL_PLACEHOLDER : 'SPECIAL_PLACEHOLDER',
+    KEY_IDENT : 'KEY_IDENT',
     MODULE   : 'MODULE',
     IDENT    : 'IDENT',
     STRING   : 'STRING',
@@ -12412,11 +12409,14 @@ exports.type = {
 // returns a new node object
 exports.node = function node(type, content, loc) {
     return {
-        type    : type,
-        content : content,
-        defVars : [],
-        parent  : null,
-        loc     : loc && {
+        type        : type,
+        content     : content,
+        defVars     : [],
+        exportedVars: [],
+        importedVars: [],
+        exportedDefault: null,
+        parent      : null,
+        loc         : loc && {
             firstLine  : loc.first_line,
             lastLine   : loc.last_line,
             firstColumn: loc.first_column,
@@ -12500,12 +12500,12 @@ exports.node = function node(type, content, loc) {
   }
 */
 var RamdaScriptParser = (function(){
-var o=function(k,v,o,l){for(o=o||{},l=k.length;l--;o[k[l]]=v);return o},$V0=[5,9,10],$V1=[1,8],$V2=[1,7],$V3=[1,23],$V4=[1,22],$V5=[1,24],$V6=[1,13],$V7=[1,12],$V8=[1,14],$V9=[1,15],$Va=[1,16],$Vb=[1,17],$Vc=[5,9,10,12,14,16,18,21,23,27,29,30,31,32,33,34,35],$Vd=[9,10,12,14,16,18,21,29,30,31,32,33,34],$Ve=[2,28],$Vf=[1,28],$Vg=[9,10,12,14,16,18,21,23,27,29,30,31,32,33,34,35],$Vh=[9,10,12,14,16,18,19,21,23,27,29,30,31,32,33,34,35],$Vi=[1,35],$Vj=[23,27],$Vk=[23,27,35];
+var o=function(k,v,o,l){for(o=o||{},l=k.length;l--;o[k[l]]=v);return o},$V0=[5,9,10],$V1=[1,8],$V2=[1,7],$V3=[1,25],$V4=[1,24],$V5=[1,26],$V6=[1,12],$V7=[1,14],$V8=[1,15],$V9=[1,16],$Va=[1,17],$Vb=[1,18],$Vc=[1,19],$Vd=[5,9,10,12,14,16,18,21,23,27,30,31,32,33,34,35,36],$Ve=[9,10,12,14,16,18,21,27,30,31,32,33,34,35],$Vf=[2,29],$Vg=[1,30],$Vh=[9,10,12,14,16,18,21,27,30,31,32,33,34,35,36],$Vi=[9,10,12,14,16,18,21,23,27,30,31,32,33,34,35,36],$Vj=[9,10,12,14,16,18,19,21,23,27,30,31,32,33,34,35,36],$Vk=[1,37],$Vl=[23,27];
 var parser = {trace: function trace() { },
 yy: {},
-symbols_: {"error":2,"Module":3,"Module_repetition0":4,"EOF":5,"Source":6,"SExp":7,"JSBlock":8,"JSBLOCK":9,"(":10,"AtomList":11,")":12,"Array":13,"[":14,"Array_option0":15,"]":16,"QualifiedIdent":17,"IDENT":18,".":19,"Object":20,"{":21,"Object_option0":22,"}":23,"PropertyList":24,"Property":25,"Separator":26,":":27,"Atom":28,"STRING":29,"SPECIAL_PLACEHOLDER":30,"NUMBER":31,"REGEXP":32,"NIL":33,"BOOLEAN":34,",":35,"$accept":0,"$end":1},
-terminals_: {2:"error",5:"EOF",9:"JSBLOCK",10:"(",12:")",14:"[",16:"]",18:"IDENT",19:".",21:"{",23:"}",27:":",29:"STRING",30:"SPECIAL_PLACEHOLDER",31:"NUMBER",32:"REGEXP",33:"NIL",34:"BOOLEAN",35:","},
-productions_: [0,[3,2],[6,1],[6,1],[8,1],[7,3],[13,3],[17,1],[17,3],[20,3],[24,2],[24,3],[25,3],[25,3],[11,2],[11,3],[28,1],[28,1],[28,1],[28,1],[28,1],[28,1],[28,1],[28,1],[28,1],[28,1],[28,1],[26,1],[26,0],[4,0],[4,2],[15,0],[15,1],[22,0],[22,1]],
+symbols_: {"error":2,"Module":3,"Module_repetition0":4,"EOF":5,"Source":6,"SExp":7,"JSBlock":8,"JSBLOCK":9,"(":10,"AtomList":11,")":12,"Array":13,"[":14,"Array_option0":15,"]":16,"QualifiedIdent":17,"IDENT":18,".":19,"Object":20,"{":21,"Object_option0":22,"}":23,"PropertyList":24,"Property":25,"Separator":26,"KEY_IDENT":27,"AtomNoKeyIdent":28,"Atom":29,"SPECIAL_PLACEHOLDER":30,"STRING":31,"NUMBER":32,"REGEXP":33,"NIL":34,"BOOLEAN":35,",":36,"$accept":0,"$end":1},
+terminals_: {2:"error",5:"EOF",9:"JSBLOCK",10:"(",12:")",14:"[",16:"]",18:"IDENT",19:".",21:"{",23:"}",27:"KEY_IDENT",30:"SPECIAL_PLACEHOLDER",31:"STRING",32:"NUMBER",33:"REGEXP",34:"NIL",35:"BOOLEAN",36:","},
+productions_: [0,[3,2],[6,1],[6,1],[8,1],[7,3],[13,3],[17,1],[17,3],[20,3],[24,2],[24,3],[25,2],[11,2],[11,3],[29,1],[29,1],[28,1],[28,1],[28,1],[28,1],[28,1],[28,1],[28,1],[28,1],[28,1],[28,1],[28,1],[26,1],[26,0],[4,0],[4,2],[15,0],[15,1],[22,0],[22,1]],
 performAction: function anonymous(yytext, yyleng, yylineno, yy, yystate /* action[1] */, $$ /* vstack */, _$ /* lstack */) {
 /* this == yyval */
 
@@ -12541,53 +12541,49 @@ break;
 case 9:
  this.$ = node(T.OBJECT, $$[$0-1] || [], _$[$0-1]) 
 break;
-case 10: case 14:
+case 10: case 13:
  this.$ = [$$[$0-1]]   
 break;
-case 11: case 15:
+case 11: case 14:
  this.$.push($$[$0-1]) 
 break;
 case 12:
 
             this.$       = node(T.PROPERTY)
-            this.$.key   = node(T.IDENT, $$[$0-1], _$[$0-1])
+            this.$.key   = node(T.KEY_IDENT, $$[$0-1], _$[$0-1])
             this.$.value = $$[$0]
         
 break;
-case 13:
-
-            this.$       = node(T.PROPERTY)
-            this.$.key   = node(T.STRING, $$[$0-1], _$[$0-1])
-            this.$.value = $$[$0]
-        
-break;
-case 17:
- this.$ = node(T.SPECIAL_PLACEHOLDER, $$[$0], _$[$0]) 
+case 16:
+ this.$ = node(T.KEY_IDENT, $$[$0], _$[$0]) 
 break;
 case 18:
- this.$ = node(T.STRING, $$[$0], _$[$0])              
+ this.$ = node(T.SPECIAL_PLACEHOLDER, $$[$0], _$[$0]) 
 break;
 case 19:
- this.$ = node(T.NUMBER, $$[$0], _$[$0])              
+ this.$ = node(T.STRING, $$[$0], _$[$0])              
 break;
 case 20:
- this.$ = node(T.REGEXP, $$[$0], _$[$0])              
+ this.$ = node(T.NUMBER, $$[$0], _$[$0])              
 break;
 case 21:
- this.$ = node(T.NIL, $$[$0], _$[$0])                 
+ this.$ = node(T.REGEXP, $$[$0], _$[$0])              
 break;
 case 22:
+ this.$ = node(T.NIL, $$[$0], _$[$0])                 
+break;
+case 23:
  this.$ = node(T.BOOLEAN, $$[$0], _$[$0])             
 break;
-case 29:
+case 30:
 this.$ = [];
 break;
-case 30:
+case 31:
 $$[$0-1].push($$[$0]);
 break;
 }
 },
-table: [o($V0,[2,29],{3:1,4:2}),{1:[3]},{5:[1,3],6:4,7:5,8:6,9:$V1,10:$V2},{1:[2,1]},o($V0,[2,30]),o($V0,[2,2]),o($V0,[2,3]),{7:19,8:18,9:$V1,10:$V2,11:9,13:20,14:$V3,17:11,18:$V4,20:21,21:$V5,28:10,29:$V6,30:$V7,31:$V8,32:$V9,33:$Va,34:$Vb},o($Vc,[2,4]),{7:19,8:18,9:$V1,10:$V2,12:[1,25],13:20,14:$V3,17:11,18:$V4,20:21,21:$V5,28:26,29:$V6,30:$V7,31:$V8,32:$V9,33:$Va,34:$Vb},o($Vd,$Ve,{26:27,35:$Vf}),o($Vg,[2,16],{19:[1,29]}),o($Vg,[2,17]),o($Vg,[2,18]),o($Vg,[2,19]),o($Vg,[2,20]),o($Vg,[2,21]),o($Vg,[2,22]),o($Vg,[2,23]),o($Vg,[2,24]),o($Vg,[2,25]),o($Vg,[2,26]),o($Vh,[2,7]),{7:19,8:18,9:$V1,10:$V2,11:31,13:20,14:$V3,15:30,16:[2,31],17:11,18:$V4,20:21,21:$V5,28:10,29:$V6,30:$V7,31:$V8,32:$V9,33:$Va,34:$Vb},{22:32,23:[2,33],24:33,25:34,27:$Vi},o($Vc,[2,5]),o($Vd,$Ve,{26:36,35:$Vf}),o($Vd,[2,14]),o([9,10,12,14,16,18,21,23,27,29,30,31,32,33,34],[2,27]),{18:[1,37]},{16:[1,38]},{7:19,8:18,9:$V1,10:$V2,13:20,14:$V3,16:[2,32],17:11,18:$V4,20:21,21:$V5,28:26,29:$V6,30:$V7,31:$V8,32:$V9,33:$Va,34:$Vb},{23:[1,39]},{23:[2,34],25:40,27:$Vi},o($Vj,$Ve,{26:41,35:$Vf}),{18:[1,42],29:[1,43]},o($Vd,[2,15]),o($Vh,[2,8]),o($Vg,[2,6]),o($Vg,[2,9]),o($Vj,$Ve,{26:44,35:$Vf}),o($Vj,[2,10]),{7:19,8:18,9:$V1,10:$V2,13:20,14:$V3,17:11,18:$V4,20:21,21:$V5,28:45,29:$V6,30:$V7,31:$V8,32:$V9,33:$Va,34:$Vb},{7:19,8:18,9:$V1,10:$V2,13:20,14:$V3,17:11,18:$V4,20:21,21:$V5,28:46,29:$V6,30:$V7,31:$V8,32:$V9,33:$Va,34:$Vb},o($Vj,[2,11]),o($Vk,[2,12]),o($Vk,[2,13])],
+table: [o($V0,[2,30],{3:1,4:2}),{1:[3]},{5:[1,3],6:4,7:5,8:6,9:$V1,10:$V2},{1:[2,1]},o($V0,[2,31]),o($V0,[2,2]),o($V0,[2,3]),{7:21,8:20,9:$V1,10:$V2,11:9,13:22,14:$V3,17:13,18:$V4,20:23,21:$V5,27:$V6,28:11,29:10,30:$V7,31:$V8,32:$V9,33:$Va,34:$Vb,35:$Vc},o($Vd,[2,4]),{7:21,8:20,9:$V1,10:$V2,12:[1,27],13:22,14:$V3,17:13,18:$V4,20:23,21:$V5,27:$V6,28:11,29:28,30:$V7,31:$V8,32:$V9,33:$Va,34:$Vb,35:$Vc},o($Ve,$Vf,{26:29,36:$Vg}),o($Vh,[2,15]),o($Vh,[2,16]),o($Vi,[2,17],{19:[1,31]}),o($Vi,[2,18]),o($Vi,[2,19]),o($Vi,[2,20]),o($Vi,[2,21]),o($Vi,[2,22]),o($Vi,[2,23]),o($Vi,[2,24]),o($Vi,[2,25]),o($Vi,[2,26]),o($Vi,[2,27]),o($Vj,[2,7]),{7:21,8:20,9:$V1,10:$V2,11:33,13:22,14:$V3,15:32,16:[2,32],17:13,18:$V4,20:23,21:$V5,27:$V6,28:11,29:10,30:$V7,31:$V8,32:$V9,33:$Va,34:$Vb,35:$Vc},{22:34,23:[2,34],24:35,25:36,27:$Vk},o($Vd,[2,5]),o($Ve,$Vf,{26:38,36:$Vg}),o($Ve,[2,13]),o([9,10,12,14,16,18,21,23,27,30,31,32,33,34,35],[2,28]),{18:[1,39]},{16:[1,40]},{7:21,8:20,9:$V1,10:$V2,13:22,14:$V3,16:[2,33],17:13,18:$V4,20:23,21:$V5,27:$V6,28:11,29:28,30:$V7,31:$V8,32:$V9,33:$Va,34:$Vb,35:$Vc},{23:[1,41]},{23:[2,35],25:42,27:$Vk},o($Vl,$Vf,{26:43,36:$Vg}),{7:21,8:20,9:$V1,10:$V2,13:22,14:$V3,17:13,18:$V4,20:23,21:$V5,28:44,30:$V7,31:$V8,32:$V9,33:$Va,34:$Vb,35:$Vc},o($Ve,[2,14]),o($Vj,[2,8]),o($Vi,[2,6]),o($Vi,[2,9]),o($Vl,$Vf,{26:45,36:$Vg}),o($Vl,[2,10]),o([23,27,36],[2,12]),o($Vl,[2,11])],
 defaultActions: {3:[2,1]},
 parseError: function parseError(str, hash) {
     if (hash.recoverable) {
@@ -13073,41 +13069,43 @@ case 2:/* skip comments */
 break;
 case 3:return 9
 break;
-case 4:return 29
+case 4:return 31
 break;
-case 5:return 32
+case 5:return 33
 break;
 case 6:return 30
 break;
-case 7:return 33
+case 7:return 34
 break;
-case 8:return 34
+case 8:return 35
 break;
-case 9:return 31
+case 9:return 32
 break;
 case 10:return 18
 break;
-case 11:return 21
+case 11:return 27
 break;
-case 12:return 23
+case 12:return 21
 break;
-case 13:return 10
+case 13:return 23
 break;
-case 14:return 12
+case 14:return 10
 break;
-case 15:return 14
+case 15:return 12
 break;
-case 16:return 16
+case 16:return 14
 break;
-case 17:return 27
+case 17:return 16
 break;
-case 18:return 35
+case 18:return ':'
 break;
-case 19:return 19
+case 19:return 36
 break;
-case 20:return 5
+case 20:return 19
 break;
-case 21:
+case 21:return 5
+break;
+case 22:
         yy.parseError('character ' + yy_.yytext + ' with code: ' + yy_.yytext.charCodeAt(0), {
             line: yy_.yylloc.first_line
         })
@@ -13115,8 +13113,8 @@ case 21:
 break;
 }
 },
-rules: [/^(?:[ \r\n\f\t\u00A0\u2028\u2029\uFEFF]+)/,/^(?:\/\/.*)/,/^(?:\/\*([\s\S]*?)\*\/)/,/^(?:\{#([\s\S]*?)#\})/,/^(?:'([^\\']|\\[\s\S])*')/,/^(?:\/([^\\/]|\\[\s\S])*\/[gimy]*)/,/^(?:_\b)/,/^(?:nil\b)/,/^(?:true|false\b)/,/^(?:0x[\da-fA-F]+|^\d*\.?\d+(?:[eE][+-]?\d+)?\b)/,/^(?:[\$_a-zA-Z\x7f-\uffff]+[\$\w\x7f-\uffff]*)/,/^(?:\{)/,/^(?:\})/,/^(?:\()/,/^(?:\))/,/^(?:\[)/,/^(?:\])/,/^(?::)/,/^(?:,)/,/^(?:\.)/,/^(?:$)/,/^(?:.)/],
-conditions: {"INITIAL":{"rules":[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21],"inclusive":true}}
+rules: [/^(?:[ \r\n\f\t\u00A0\u2028\u2029\uFEFF]+)/,/^(?:\/\/.*)/,/^(?:\/\*([\s\S]*?)\*\/)/,/^(?:\{#([\s\S]*?)#\})/,/^(?:'([^\\']|\\[\s\S])*')/,/^(?:\/([^\\\/]|\\[\s\S])*\/[gimy]*)/,/^(?:_\b)/,/^(?:nil\b)/,/^(?:true|false\b)/,/^(?:0x[\da-fA-F]+|^\d*\.?\d+(?:[eE][+-]?\d+)?\b)/,/^(?:[\$_a-zA-Z\x7f-\uffff]+[\$\w\x7f-\uffff]*)/,/^(?::\s*([\S])+\b)/,/^(?:\{)/,/^(?:\})/,/^(?:\()/,/^(?:\))/,/^(?:\[)/,/^(?:\])/,/^(?::)/,/^(?:,)/,/^(?:\.)/,/^(?:$)/,/^(?:.)/],
+conditions: {"INITIAL":{"rules":[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22],"inclusive":true}}
 });
 return lexer;
 })();
@@ -13354,6 +13352,49 @@ function walk(node, parent, ctx) {
                                 // allowed identifier
                                 ctx.error(unexpected(refer.type), refer.loc.firstLine)
                         }
+                    }
+                break
+                case 'export' :
+                    var exported
+                    function isDefined (varName, parent) {
+                        var defined = false
+                        parent.content.forEach(function(node) {
+                            if (node.type === T.SEXPR
+                                && node.operator.content === 'def'
+                                && node.content[0].content === varName) {
+                                defined = true
+                            }
+                        })
+                        return defined
+                    }
+
+                    if (parent.type === T.MODULE) {
+                        // data must be at least
+                        if (data.length === 1) {
+                            exported = data[0]
+                            if (exported.type === T.IDENT) {
+                                // it must be defined or imported
+                                if (!isDefined(exported.content, parent)) {
+                                    ctx.error('\'' + exported.content + '\' is not defined', exported.loc.firstLine)
+                                }
+                            } else if (exported.type == T.ARRAY) {
+                                if (exported.content.length > 0) {
+                                    exported.content.forEach(function(node) {
+                                        if (!isDefined(node.content, parent)) {
+                                            ctx.error('\'' + node.content + '\' is not defined', node.loc.firstLine)
+                                        }
+                                    })
+                                } else {
+                                    ctx.error('expected identifier', exported.loc.firstLine)
+                                }
+                            } else {
+                                ctx.error('invalid exported element', lineno)
+                            }
+                        } else {
+                            ctx.error('invalid exported element', lineno)
+                        }
+                    } else {
+                        ctx.error('only can be exported in module scope', lineno)
                     }
                 break
                 case 'new' :
@@ -13651,6 +13692,7 @@ var BuiltinFunctions = [
     'fn',
     'alter',
     'import',
+    'export'
 ]
 
 var RamdaFunctions = R.keys(R)
@@ -13688,6 +13730,52 @@ exports.addDefVar = function addDefVar(node, varName) {
 // whether a variable is registered as defined iside a node scope
 exports.isDefVar = function isDefVar(node, varName) {
     return node.defVars.indexOf(varName) !== -1
+}
+
+exports.inspect = function inspect(val, indent) {
+    indent = R.defaultTo(0, indent)
+    var indentUnit = '  '
+    var indentStr = R.times(R.always(indentUnit), indent).join('')
+    if (val === void 0) {
+        return 'void'
+    }
+    switch (R.type(val)) {
+        case 'Null' :
+            return 'nil'
+        case 'String' :
+            return '\'' + val + '\''
+        case 'RegExp' :
+            return '/' + val.source + '/' + val.flags
+        case 'Date' :
+            return '(new Date \'' + val.toString() + '\')'
+        case 'Boolean' :
+            return val ? 'true' : 'false'
+        case 'Function' :
+            return '(func [...])'
+        case 'Object' :
+            indent++
+            var kv = R.keys(val).map(function(k) {
+                return indentStr + indentUnit + ':' + k + ' ' + inspect(val[k], indent)
+            })
+            return kv.length ? '{\n' + kv.join('\n') + '\n' + indentStr + '}' : '{}'
+        case 'Array' :
+            var arr = val.map(function(item) {
+                return inspect(item)
+            })
+            return '[' + arr.join(' ') +  ']'
+
+    }
+    return val
+}
+
+// register exported vars inside a node scope
+exports.addExportedVar = function addExportedVar(node, varName) {
+    node.exportedVars.push(varName)
+}
+
+// whether a variable is exported iside a node scope
+exports.isExportedVar = function isExportedVar(node, varName) {
+    return node.exportedVars.indexOf(varName) !== -1
 }
 
 // format a string using `{}` placeholder
